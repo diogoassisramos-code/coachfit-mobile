@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, T } from "@/components/ui";
-import { C, R, S } from "@/constants/coachfit";
+import { C, dataFont, interFont, R, S } from "@/constants/coachfit";
 
 const ANGULOS = ["Frente", "Lado", "Costas"];
 
@@ -39,7 +39,7 @@ export default function CheckinScreen() {
             resposta em breve.
           </T>
           <Pressable style={st.btn} onPress={() => router.back()}>
-            <T c="white" size={15} weight="700">
+            <T c="brand" size={15} weight="700">
               Voltar
             </T>
           </Pressable>
@@ -96,8 +96,8 @@ export default function CheckinScreen() {
           <View style={st.fotos}>
             {ANGULOS.map((a) => (
               <Pressable key={a} style={st.foto}>
-                <Ionicons name="camera-outline" size={24} color={C.textTer} />
-                <T c="textTer" size={12} style={{ marginTop: 4 }}>
+                <Ionicons name="camera-outline" size={24} color={C.accent} />
+                <T c="textOnDarkMuted" size={12} style={{ marginTop: 4 }}>
                   {a}
                 </T>
               </Pressable>
@@ -134,8 +134,8 @@ export default function CheckinScreen() {
           disabled={!peso.trim()}
           onPress={() => setEnviado(true)}
         >
-          <Ionicons name="send" size={18} color={C.white} />
-          <T c="white" size={15} weight="700">
+          <Ionicons name="send" size={18} color={C.brand} />
+          <T c="brand" size={15} weight="700">
             Enviar check-in
           </T>
         </Pressable>
@@ -166,7 +166,7 @@ function Rating({
             <Ionicons
               name={n <= value ? "star" : "star-outline"}
               size={26}
-              color={n <= value ? C.brand : C.borderStrong}
+              color={n <= value ? C.accentDeep : C.borderStrong}
             />
           </Pressable>
         ))}
@@ -215,16 +215,20 @@ const st = StyleSheet.create({
   content: { padding: S.lg, gap: S.lg, paddingBottom: S.xxxl },
   label: { letterSpacing: 0.5, marginBottom: S.sm },
   pesoWrap: { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  pesoInput: { fontSize: 32, fontWeight: "700", color: C.text, minWidth: 90 },
+  pesoInput: {
+    fontSize: 32,
+    fontWeight: "700",
+    fontFamily: dataFont("700"),
+    letterSpacing: -0.5,
+    color: C.text,
+    minWidth: 90,
+  },
   fotos: { flexDirection: "row", gap: S.md },
   foto: {
     flex: 1,
     aspectRatio: 0.78,
-    backgroundColor: C.surfaceAlt,
-    borderRadius: R.md,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderStyle: "dashed",
+    backgroundColor: C.surfaceDarkAlt,
+    borderRadius: R.lg,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -239,6 +243,7 @@ const st = StyleSheet.create({
   textarea: {
     minHeight: 90,
     fontSize: 15,
+    fontFamily: interFont("400"),
     color: C.text,
     textAlignVertical: "top",
     lineHeight: 21,
@@ -250,9 +255,9 @@ const st = StyleSheet.create({
     backgroundColor: C.surface,
   },
   btn: {
-    backgroundColor: C.brand,
-    borderRadius: R.md,
-    height: 50,
+    backgroundColor: C.accent,
+    borderRadius: R.pill,
+    height: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

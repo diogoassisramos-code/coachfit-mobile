@@ -6,6 +6,14 @@
 
 export type Macros = { kcal: number; p: number; c: number; g: number };
 
+/** Detalhe de uma série específica (aquecimento, válida, top-set, drop…). */
+export type SerieSpec = {
+  rotulo: string; // "Aquecimento", "Válida", "Top set", "Back-off"…
+  reps: string;
+  descansoSeg: number;
+  obs?: string; // orientação específica daquela série
+};
+
 export type Exercicio = {
   id: string;
   nome: string;
@@ -15,6 +23,11 @@ export type Exercicio = {
   descansoSeg: number;
   video: boolean;
   observacoes?: string;
+  /**
+   * Detalhamento série-a-série (opcional). Quando presente, descreve cada série
+   * com reps/descanso/orientação próprios; senão usa series/reps/descansoSeg.
+   */
+  seriesDetalhe?: SerieSpec[];
   /** Carga registrada pelo aluno na última vez (kg). */
   ultimaCarga?: string;
 };
@@ -49,9 +62,16 @@ export type ProtocoloItem = {
   dose: string;
   horario: string;
   observacoes?: string;
+  /** Detalhamento de uso — como o coach orientou a usar o item. */
+  comoUsar?: string; // instrução completa de uso
+  comOQue?: string; // "250 ml de água", "refeição com gordura"…
+  beneficio?: string; // pra que serve
+  duracao?: string; // "Contínuo", "Só em dias de treino", "8 semanas"…
 };
 
 export type ProtocoloBloco = { id: string; nome: string; itens: ProtocoloItem[] };
+
+export type FotoCheckin = { angulo: string; url?: string };
 
 export type CheckIn = {
   id: string;
@@ -60,6 +80,12 @@ export type CheckIn = {
   peso: number;
   status: "respondido" | "aguardando";
   respostaCoach?: string;
+  /** O que o aluno registrou no check-in (presente nos já enviados). */
+  fotos?: FotoCheckin[];
+  energia?: number; // 1–5
+  sono?: number; // 1–5
+  dietaNota?: number; // 1–5 (adesão à dieta na semana)
+  comentario?: string;
 };
 
 export const aluno = {
@@ -82,7 +108,12 @@ export const treinos: Treino[] = [
     nome: "Treino A — Superiores",
     diaSemana: "Hoje",
     exercicios: [
-      { id: "e1", nome: "Supino reto com barra", grupo: "Peito", series: 4, reps: "8-10", descansoSeg: 90, video: true, observacoes: "Desça controlado (2s na excêntrica) até tocar o peito. Cotovelos a ~45°.", ultimaCarga: "40 kg" },
+      { id: "e1", nome: "Supino reto com barra", grupo: "Peito", series: 4, reps: "8-10", descansoSeg: 90, video: true, observacoes: "Desça controlado (2s na excêntrica) até tocar o peito. Cotovelos a ~45°.", ultimaCarga: "40 kg", seriesDetalhe: [
+        { rotulo: "Aquecimento", reps: "12", descansoSeg: 30, obs: "Carga leve, só pra ativar o peito." },
+        { rotulo: "Válida", reps: "8-10", descansoSeg: 90 },
+        { rotulo: "Válida", reps: "8-10", descansoSeg: 90 },
+        { rotulo: "Top set", reps: "6-8", descansoSeg: 120, obs: "Pode subir a carga. Leve até a falha técnica." },
+      ] },
       { id: "e2", nome: "Crucifixo com halteres", grupo: "Peito", series: 3, reps: "10-12", descansoSeg: 60, video: true, ultimaCarga: "12 kg" },
       { id: "e3", nome: "Puxada frontal", grupo: "Costas", series: 4, reps: "10-12", descansoSeg: 75, video: true, ultimaCarga: "45 kg" },
       { id: "e4", nome: "Remada curvada", grupo: "Costas", series: 3, reps: "8-10", descansoSeg: 90, video: false, ultimaCarga: "30 kg" },
@@ -94,7 +125,12 @@ export const treinos: Treino[] = [
     nome: "Treino B — Inferiores",
     diaSemana: "Quarta",
     exercicios: [
-      { id: "e6", nome: "Agachamento livre", grupo: "Pernas", series: 4, reps: "8-10", descansoSeg: 120, video: true, ultimaCarga: "50 kg" },
+      { id: "e6", nome: "Agachamento livre", grupo: "Pernas", series: 4, reps: "8-10", descansoSeg: 120, video: true, ultimaCarga: "50 kg", seriesDetalhe: [
+        { rotulo: "Aquecimento", reps: "10-12", descansoSeg: 30 },
+        { rotulo: "Aquecimento", reps: "8-10", descansoSeg: 45 },
+        { rotulo: "Válida", reps: "6-8", descansoSeg: 120, obs: "Profundidade total, controle de 2s na descida." },
+        { rotulo: "Válida", reps: "6-8", descansoSeg: 120 },
+      ] },
       { id: "e7", nome: "Leg press 45°", grupo: "Pernas", series: 4, reps: "12-15", descansoSeg: 90, video: true, ultimaCarga: "120 kg" },
       { id: "e8", nome: "Cadeira flexora", grupo: "Posterior", series: 3, reps: "12-15", descansoSeg: 60, video: true, ultimaCarga: "35 kg" },
     ],
@@ -140,29 +176,96 @@ export const protocolo: ProtocoloBloco[] = [
     id: "pb1",
     nome: "Suplementos",
     itens: [
-      { id: "pi1", nome: "Creatina monohidratada", dose: "5 g", horario: "Diário", observacoes: "Pode dissolver no shake ou na água. Todos os dias, inclusive sem treino." },
-      { id: "pi2", nome: "Whey protein", dose: "30 g", horario: "Pós-treino", observacoes: "Bater com 250ml de água." },
-      { id: "pi3", nome: "Cafeína", dose: "200 mg", horario: "30 min antes do treino", observacoes: "Evitar após as 17h." },
+      { id: "pi1", nome: "Creatina monohidratada", dose: "5 g", horario: "Diário", comoUsar: "Tome todos os dias, inclusive nos dias sem treino — o efeito é por saturação (acumula no músculo), não imediato. Horário não importa.", comOQue: "Água ou shake", beneficio: "Aumenta força e volume; melhora a recuperação entre as séries.", duracao: "Contínuo" },
+      { id: "pi2", nome: "Whey protein", dose: "30 g", horario: "Pós-treino", comoUsar: "Logo após o treino. Se for sua maior dificuldade, pode usar também pra bater a meta de proteína em outro horário do dia.", comOQue: "250 ml de água", beneficio: "Completa a proteína do dia e acelera a recuperação muscular.", duracao: "Contínuo" },
+      { id: "pi3", nome: "Cafeína", dose: "200 mg", horario: "30 min antes do treino", comoUsar: "Tome 30 min antes de treinar. Se for sensível, comece com metade da dose pra avaliar tolerância.", comOQue: "Água", beneficio: "Mais foco e energia; reduz a percepção de esforço no treino.", duracao: "Só nos dias de treino", observacoes: "Evite após as 17h pra não atrapalhar o sono." },
     ],
   },
   {
     id: "pb2",
     nome: "Vitaminas",
     itens: [
-      { id: "pi4", nome: "Vitamina D3", dose: "2.000 UI", horario: "Café da manhã", observacoes: "Tomar junto de uma refeição com gordura." },
-      { id: "pi5", nome: "Ômega 3", dose: "2 cápsulas", horario: "Almoço" },
+      { id: "pi4", nome: "Vitamina D3", dose: "2.000 UI", horario: "Café da manhã", comoUsar: "Tome no café da manhã, junto de uma refeição que tenha gordura — melhora bastante a absorção.", comOQue: "Refeição com gordura", beneficio: "Saúde óssea, imunidade e regulação do humor.", duracao: "Contínuo" },
+      { id: "pi5", nome: "Ômega 3", dose: "2 cápsulas", horario: "Almoço", comoUsar: "2 cápsulas no almoço, junto da refeição.", comOQue: "Refeição", beneficio: "Anti-inflamatório; saúde cardiovascular e das articulações.", duracao: "Contínuo" },
     ],
   },
 ];
 
+const ANGULOS = ["Frente", "Lado", "Costas"];
+const fotos = (n = 3): FotoCheckin[] =>
+  ANGULOS.slice(0, n).map((angulo) => ({ angulo }));
+
 export const checkins: CheckIn[] = [
   { id: "c6", semana: 6, data: "20 jun", peso: 60.4, status: "aguardando" },
-  { id: "c5", semana: 5, data: "13 jun", peso: 60.7, status: "respondido", respostaCoach: "Ótima semana! Atenção ao sono. Mantém a dieta." },
-  { id: "c4", semana: 4, data: "06 jun", peso: 61.0, status: "respondido", respostaCoach: "Excelente evolução." },
-  { id: "c3", semana: 3, data: "30 mai", peso: 61.3, status: "respondido", respostaCoach: "Sem problema, foco na semana." },
-  { id: "c2", semana: 2, data: "23 mai", peso: 61.6, status: "respondido", respostaCoach: "Mandou bem, segue assim." },
-  { id: "c1", semana: 1, data: "16 mai", peso: 62.0, status: "respondido", respostaCoach: "Bom começo! Vamos ajustar o volume." },
+  {
+    id: "c5",
+    semana: 5,
+    data: "13 jun",
+    peso: 60.7,
+    status: "respondido",
+    respostaCoach: "Ótima semana! Atenção ao sono. Mantém a dieta.",
+    fotos: fotos(),
+    energia: 4,
+    sono: 2,
+    dietaNota: 5,
+    comentario:
+      "Semana boa de treino, energia ok. Dormi mal na quarta e quinta por causa do trabalho, mas a dieta consegui seguir 100%.",
+  },
+  {
+    id: "c4",
+    semana: 4,
+    data: "06 jun",
+    peso: 61.0,
+    status: "respondido",
+    respostaCoach: "Excelente evolução.",
+    fotos: fotos(),
+    energia: 5,
+    sono: 4,
+    dietaNota: 4,
+    comentario: "Me senti muito bem essa semana, treinos pesados e disposição alta.",
+  },
+  {
+    id: "c3",
+    semana: 3,
+    data: "30 mai",
+    peso: 61.3,
+    status: "respondido",
+    respostaCoach: "Sem problema, foco na semana.",
+    fotos: fotos(2),
+    energia: 3,
+    sono: 3,
+    dietaNota: 3,
+    comentario: "Semana corrida, escapei da dieta no fim de semana.",
+  },
+  {
+    id: "c2",
+    semana: 2,
+    data: "23 mai",
+    peso: 61.6,
+    status: "respondido",
+    respostaCoach: "Mandou bem, segue assim.",
+    fotos: fotos(),
+    energia: 4,
+    sono: 4,
+    dietaNota: 4,
+    comentario: "Adaptando à rotina, mas curtindo os treinos.",
+  },
+  {
+    id: "c1",
+    semana: 1,
+    data: "16 mai",
+    peso: 62.0,
+    status: "respondido",
+    respostaCoach: "Bom começo! Vamos ajustar o volume.",
+    fotos: fotos(),
+    energia: 3,
+    sono: 3,
+    dietaNota: 4,
+    comentario: "Primeira semana, ainda pegando o jeito dos exercícios.",
+  },
 ];
+
+export const getCheckin = (id: string) => checkins.find((c) => c.id === id);
 
 export function totalKcal(): number {
   return refeicoes.reduce(

@@ -67,8 +67,19 @@ export default function PerfilScreen() {
           {checkins.map((c, i) => (
             <Pressable
               key={c.id}
-              onPress={() => c.status === "aguardando" && router.push("/checkin")}
-              style={[s.checkRow, i > 0 && s.checkBorder]}
+              onPress={() =>
+                c.status === "aguardando"
+                  ? router.push("/checkin")
+                  : router.push({
+                      pathname: "/checkins/[id]",
+                      params: { id: c.id },
+                    })
+              }
+              style={({ pressed }) => [
+                s.checkRow,
+                i > 0 && s.checkBorder,
+                pressed && { opacity: 0.6 },
+              ]}
             >
               <View style={{ flex: 1 }}>
                 <T size={14} weight="700">
@@ -90,6 +101,7 @@ export default function PerfilScreen() {
                   Respondido
                 </Badge>
               )}
+              <Ionicons name="chevron-forward" size={18} color={C.textTer} />
             </Pressable>
           ))}
         </Card>
@@ -100,7 +112,13 @@ export default function PerfilScreen() {
         <Action icon="notifications-outline" label="Notificações" />
         <Action icon="lock-closed-outline" label="Conta e senha" />
         <Action icon="help-circle-outline" label="Ajuda e suporte" />
-        <Action icon="log-out-outline" label="Sair" danger last />
+        <Action
+          icon="log-out-outline"
+          label="Sair"
+          danger
+          last
+          onPress={() => router.replace("/login")}
+        />
       </Card>
     </Screen>
   );
@@ -135,14 +153,19 @@ function Action({
   label,
   danger,
   last,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   danger?: boolean;
   last?: boolean;
+  onPress?: () => void;
 }) {
   return (
-    <Pressable style={[s.action, !last && s.checkBorder]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [s.action, !last && s.checkBorder, pressed && { opacity: 0.6 }]}
+    >
       <Ionicons name={icon} size={20} color={danger ? C.danger : C.textSec} />
       <T size={15} weight="500" c={danger ? "danger" : "text"} style={{ flex: 1 }}>
         {label}

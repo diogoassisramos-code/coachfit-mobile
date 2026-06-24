@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Avatar, Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
-import { C, R, S } from "@/constants/coachfit";
+import { Avatar, Card, Screen, ScreenHeader, T } from "@/components/ui";
+import { C, dataFont, interFont, R, S } from "@/constants/coachfit";
 import { aluno, checkins, metaKcal, totalKcal, treinos } from "@/data/aluno";
 
 export default function HojeScreen() {
@@ -16,53 +16,52 @@ export default function HojeScreen() {
     <Screen>
       <ScreenHeader
         eyebrow={aluno.consultoria}
-        title="Olá, Ana 👋"
+        title="Olá, Ana"
         subtitle="Vamos pro treino de hoje?"
         right={<Avatar name={aluno.nome} size={48} />}
       />
 
-      {/* Check-in da semana */}
+      {/* Check-in da semana — módulo petrol com losango mint */}
       {checkinAberto ? (
-        <Card style={{ borderColor: C.brand, borderWidth: 1.5 }}>
-          <View style={s.cardTop}>
-            <Badge tone="brand" icon="calendar-outline">
+        <View style={hero.card}>
+          <View style={hero.diamond} />
+          <View style={hero.eyebrowPill}>
+            <Ionicons name="calendar-outline" size={13} color={C.accent} />
+            <Text style={hero.eyebrowText}>
               Check-in da semana {checkinAberto.semana}
-            </Badge>
+            </Text>
           </View>
-          <T size={15} weight="600" style={{ marginTop: S.sm }}>
-            Hora do seu check-in semanal
-          </T>
-          <T c="textSec" style={{ marginTop: 2 }}>
-            Registre peso, fotos e como foi a semana pro {aluno.consultor} ajustar
-            seu plano.
-          </T>
-          <Pressable style={s.cta} onPress={() => router.push("/checkin")}>
-            <Ionicons name="camera-outline" size={18} color={C.white} />
-            <Text style={s.ctaText}>Fazer check-in</Text>
+          <Text style={hero.title}>Hora do seu check-in semanal</Text>
+          <Text style={hero.body}>
+            Registre peso, fotos e como foi a semana pro {aluno.consultor}{" "}
+            ajustar seu plano.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [hero.cta, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push("/checkin")}
+          >
+            <Ionicons name="camera-outline" size={18} color={C.brand} />
+            <Text style={hero.ctaText}>Fazer check-in</Text>
           </Pressable>
-        </Card>
+        </View>
       ) : null}
 
       {/* Métricas rápidas */}
       <View style={s.metrics}>
         <Card style={s.metric}>
-          <T c="textTer" size={11} weight="600" style={s.metricLabel}>
+          <T c="textTer" size={11} weight="700" style={s.metricLabel}>
             PESO ATUAL
           </T>
-          <T size={22} weight="700">
-            {aluno.pesoAtual} kg
-          </T>
-          <T c="success" size={12} weight="600">
+          <Text style={s.metricValue}>{aluno.pesoAtual} kg</Text>
+          <Text style={[s.metricDelta, { color: C.accentDeep }]}>
             {(aluno.pesoAtual - aluno.pesoInicial).toFixed(1)} kg
-          </T>
+          </Text>
         </Card>
         <Card style={s.metric}>
-          <T c="textTer" size={11} weight="600" style={s.metricLabel}>
+          <T c="textTer" size={11} weight="700" style={s.metricLabel}>
             ADERÊNCIA
           </T>
-          <T size={22} weight="700">
-            {aluno.aderencia}%
-          </T>
+          <Text style={s.metricValue}>{aluno.aderencia}%</Text>
           <T c="textSec" size={12}>
             no treino
           </T>
@@ -72,7 +71,7 @@ export default function HojeScreen() {
       {/* Treino de hoje */}
       <NavCard
         icon="barbell"
-        tone="brand"
+        tone="petrol"
         title={treinoHoje.nome}
         meta={`${treinoHoje.exercicios.length} exercícios`}
         label="TREINO DE HOJE"
@@ -82,7 +81,7 @@ export default function HojeScreen() {
       {/* Dieta */}
       <NavCard
         icon="restaurant"
-        tone="success"
+        tone="mint"
         title={`${kcal.toLocaleString("pt-BR")} / ${metaKcal.toLocaleString("pt-BR")} kcal`}
         meta="3 refeições planejadas"
         label="SUA DIETA"
@@ -92,7 +91,7 @@ export default function HojeScreen() {
       {/* Protocolo */}
       <NavCard
         icon="medkit"
-        tone="warning"
+        tone="lilac"
         title="Protocolo & suplementos"
         meta="5 itens hoje"
         label="EXTRAS"
@@ -111,29 +110,32 @@ function NavCard({
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
-  tone: "brand" | "success" | "warning";
+  tone: "petrol" | "mint" | "lilac";
   title: string;
   meta: string;
   label: string;
   onPress: () => void;
 }) {
   const colors = {
-    brand: { bg: C.brandSoft, fg: C.brand },
-    success: { bg: C.successSoft, fg: C.success },
-    warning: { bg: C.warningSoft, fg: C.warning },
+    petrol: { bg: C.surfaceMuted, fg: C.petrol },
+    mint: { bg: C.accentSoft, fg: C.accentDeep },
+    lilac: { bg: C.lilacSoft, fg: C.lilac },
   }[tone];
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.7 }}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => pressed && { opacity: 0.7 }}
+    >
       <Card>
         <View style={s.navRow}>
           <View style={[s.navIcon, { backgroundColor: colors.bg }]}>
             <Ionicons name={icon} size={22} color={colors.fg} />
           </View>
           <View style={{ flex: 1 }}>
-            <T c="textTer" size={10} weight="600" style={s.metricLabel}>
+            <T c="textTer" size={10} weight="700" style={s.metricLabel}>
               {label}
             </T>
-            <T size={15} weight="600">
+            <T size={15} weight="700">
               {title}
             </T>
             <T c="textSec" size={13}>
@@ -147,22 +149,90 @@ function NavCard({
   );
 }
 
-const s = StyleSheet.create({
-  cardTop: { flexDirection: "row" },
+const hero = StyleSheet.create({
+  card: {
+    backgroundColor: C.surfaceDark,
+    borderRadius: R.xl,
+    padding: S.xl,
+    overflow: "hidden",
+  },
+  diamond: {
+    position: "absolute",
+    right: -46,
+    top: -46,
+    width: 150,
+    height: 150,
+    borderRadius: 44,
+    backgroundColor: C.accent,
+    opacity: 0.1,
+    transform: [{ rotate: "45deg" }],
+  },
+  eyebrowPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(124,211,187,0.14)",
+    borderRadius: R.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  eyebrowText: {
+    color: C.accent,
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: interFont("700"),
+    letterSpacing: 0.3,
+  },
+  title: {
+    color: C.textOnDarkStrong,
+    fontSize: 20,
+    fontWeight: "800",
+    fontFamily: interFont("800"),
+    letterSpacing: -0.4,
+    marginTop: S.md,
+  },
+  body: {
+    color: C.textOnDarkMuted,
+    fontSize: 14,
+    fontFamily: interFont("400"),
+    lineHeight: 20,
+    marginTop: 4,
+  },
   cta: {
     marginTop: S.lg,
-    backgroundColor: C.brand,
-    borderRadius: R.md,
-    height: 46,
+    backgroundColor: C.accent,
+    borderRadius: R.pill,
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: S.sm,
   },
-  ctaText: { color: C.white, fontWeight: "700", fontSize: 15 },
+  ctaText: {
+    color: C.brand,
+    fontWeight: "700",
+    fontSize: 15,
+    fontFamily: interFont("700"),
+  },
+});
+
+const s = StyleSheet.create({
   metrics: { flexDirection: "row", gap: S.md },
   metric: { flex: 1, gap: 2 },
-  metricLabel: { letterSpacing: 0.5, marginBottom: 2 },
+  metricLabel: { letterSpacing: 0.8, marginBottom: 2 },
+  metricValue: {
+    color: C.text,
+    fontSize: 24,
+    fontWeight: "700",
+    fontFamily: dataFont("700"),
+    letterSpacing: -0.5,
+  },
+  metricDelta: {
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: dataFont("600"),
+  },
   navRow: { flexDirection: "row", alignItems: "center", gap: S.md },
   navIcon: {
     width: 46,

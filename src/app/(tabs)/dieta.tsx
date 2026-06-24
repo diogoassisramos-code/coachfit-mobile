@@ -1,49 +1,76 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Card, Screen, ScreenHeader, T } from "@/components/ui";
-import { C, R, S } from "@/constants/coachfit";
-import { Refeicao, metaKcal, refeicoes, totalKcal } from "@/data/aluno";
+import { C, dataFont, R, S } from "@/constants/coachfit";
+import { Refeicao, metaKcal, refeicoes } from "@/data/aluno";
+
+const refKcal = (r: Refeicao) =>
+  r.alimentos.reduce((s, a) => s + a.macros.kcal, 0);
 
 export default function DietaScreen() {
-  const kcal = totalKcal();
+  const [marcadas, setMarcadas] = useState<Record<string, boolean>>({});
+  const consumido = refeicoes.reduce(
+    (s, r) => s + (marcadas[r.id] ? refKcal(r) : 0),
+    0
+  );
+  const feitas = refeicoes.filter((r) => marcadas[r.id]).length;
+
   return (
     <Screen>
       <ScreenHeader eyebrow="Plano alimentar" title="Dieta" />
 
       <Card>
         <View style={s.metaRow}>
-          <Ionicons name="flame" size={20} color={C.warning} />
-          <T size={22} weight="700">
-            {kcal.toLocaleString("pt-BR")}
+          <Ionicons name="flame" size={20} color={C.accentDeep} />
+          <T size={24} weight="700" style={{ fontFamily: dataFont("700") }}>
+            {consumido.toLocaleString("pt-BR")}
           </T>
           <T c="textTer" size={14}>
-            / {metaKcal.toLocaleString("pt-BR")} kcal por dia
+            / {metaKcal.toLocaleString("pt-BR")} kcal consumidas
           </T>
         </View>
         <View style={s.barTrack}>
           <View
             style={[
               s.barFill,
-              { width: `${Math.min(100, (kcal / metaKcal) * 100)}%` },
+              { width: `${Math.min(100, (consumido / metaKcal) * 100)}%` },
             ]}
           />
         </View>
+        <T c="textTer" size={12} style={{ marginTop: S.sm }}>
+          {feitas} de {refeicoes.length} refeições · marque ao comer pra somar as
+          calorias do dia
+        </T>
       </Card>
 
       {refeicoes.map((r) => (
-        <RefeicaoCard key={r.id} r={r} />
+        <RefeicaoCard
+          key={r.id}
+          r={r}
+          done={!!marcadas[r.id]}
+          onToggle={() => setMarcadas((m) => ({ ...m, [r.id]: !m[r.id] }))}
+        />
       ))}
     </Screen>
   );
 }
 
-function RefeicaoCard({ r }: { r: Refeicao }) {
-  const kcal = r.alimentos.reduce((s, a) => s + a.macros.kcal, 0);
+function RefeicaoCard({
+  r,
+  done,
+  onToggle,
+}: {
+  r: Refeicao;
+  done: boolean;
+  onToggle: () => void;
+}) {
+  const kcal = refKcal(r);
   return (
     <Card>
       <View style={s.refHead}>
-        <View>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <T size={16} weight="700">
             {r.nome}
           </T>
@@ -54,11 +81,23 @@ function RefeicaoCard({ r }: { r: Refeicao }) {
             </T>
           </View>
         </View>
-        <View style={s.kcalPill}>
-          <T c="textSec" size={13} weight="700">
+        <View style={[s.kcalPill, done && s.kcalPillDone]}>
+          <T
+            c={done ? "accentDeep" : "textSec"}
+            size={13}
+            weight="700"
+            style={{ fontFamily: dataFont("700") }}
+          >
             {kcal} kcal
           </T>
         </View>
+        <Pressable onPress={onToggle} hitSlop={8}>
+          <Ionicons
+            name={done ? "checkmark-circle" : "ellipse-outline"}
+            size={28}
+            color={done ? C.accentDeep : C.textTer}
+          />
+        </Pressable>
       </View>
 
       {r.observacoes ? (
@@ -124,12 +163,13 @@ const s = StyleSheet.create({
     marginTop: S.md,
     overflow: "hidden",
   },
-  barFill: { height: 8, backgroundColor: C.warning, borderRadius: R.pill },
+  barFill: { height: 8, backgroundColor: C.accent, borderRadius: R.pill },
   refHead: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: S.sm,
   },
+  kcalPillDone: { backgroundColor: C.accentSoft },
   horaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   kcalPill: {
     backgroundColor: C.surfaceAlt,

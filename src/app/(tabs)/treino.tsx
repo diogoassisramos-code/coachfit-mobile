@@ -1,199 +1,108 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, R, S } from "@/constants/coachfit";
-import { Exercicio, treinos } from "@/data/aluno";
+import { Treino, treinos } from "@/data/aluno";
 
 export default function TreinoScreen() {
-  const [cargas, setCargas] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      treinos.flatMap((t) => t.exercicios).map((e) => [e.id, e.ultimaCarga ?? ""])
-    )
-  );
-  const [feitos, setFeitos] = useState<Record<string, boolean>>({});
-
   return (
     <Screen>
       <ScreenHeader
         eyebrow="Seu programa"
-        title="Treino"
-        subtitle={`Enviado por ${treinos.length} treinos · ajuste a carga que você usou`}
+        title="Treinos"
+        subtitle={`${treinos.length} treinos enviados pelo seu coach`}
       />
 
-      {treinos.map((t) => (
-        <View key={t.id} style={{ gap: S.md }}>
-          <View style={s.treinoHead}>
-            <T size={17} weight="700">
-              {t.nome}
-            </T>
-            <Badge tone={t.diaSemana === "Hoje" ? "brand" : "neutral"}>
-              {t.diaSemana}
-            </Badge>
-          </View>
-
-          {t.exercicios.map((e) => (
-            <ExercicioCard
-              key={e.id}
-              ex={e}
-              carga={cargas[e.id]}
-              onCarga={(v) => setCargas((c) => ({ ...c, [e.id]: v }))}
-              feito={!!feitos[e.id]}
-              onToggle={() => setFeitos((f) => ({ ...f, [e.id]: !f[e.id] }))}
-            />
-          ))}
-        </View>
+      {treinos.map((t, i) => (
+        <TreinoCard key={t.id} treino={t} letra={String.fromCharCode(65 + i)} />
       ))}
     </Screen>
   );
 }
 
-function ExercicioCard({
-  ex,
-  carga,
-  onCarga,
-  feito,
-  onToggle,
-}: {
-  ex: Exercicio;
-  carga: string;
-  onCarga: (v: string) => void;
-  feito: boolean;
-  onToggle: () => void;
-}) {
+function TreinoCard({ treino, letra }: { treino: Treino; letra: string }) {
+  const router = useRouter();
+  const grupos = [...new Set(treino.exercicios.map((e) => e.grupo))];
+  const series = treino.exercicios.reduce((n, e) => n + e.series, 0);
+  const hoje = treino.diaSemana === "Hoje";
+
   return (
-    <Card style={feito ? { opacity: 0.6 } : undefined}>
-      <View style={s.exHead}>
-        <View style={{ flex: 1 }}>
-          <T size={15} weight="700">
-            {ex.nome}
-          </T>
-          <T c="textTer" size={11} weight="600" style={s.grupo}>
-            {ex.grupo.toUpperCase()}
-          </T>
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: "/treino/[id]", params: { id: treino.id } })
+      }
+      style={({ pressed }) => pressed && { opacity: 0.7 }}
+    >
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <View style={s.row}>
+          <View style={[s.letra, hoje && s.letraHoje]}>
+            <T size={20} weight="800" c={hoje ? "brand" : "petrol"}>
+              {letra}
+            </T>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={s.titleRow}>
+              <T size={16} weight="700" numberOfLines={1} style={{ flex: 1 }}>
+                {treino.nome}
+              </T>
+              <Badge tone={hoje ? "brand" : "neutral"}>{treino.diaSemana}</Badge>
+            </View>
+            <T c="textSec" size={13} style={{ marginTop: 4 }}>
+              {treino.exercicios.length} exercícios · {series} séries
+            </T>
+            <T c="textTer" size={12} style={{ marginTop: 2 }} numberOfLines={1}>
+              {grupos.join(" · ")}
+            </T>
+          </View>
         </View>
-        <Pressable onPress={onToggle} hitSlop={8}>
-          <Ionicons
-            name={feito ? "checkmark-circle" : "ellipse-outline"}
-            size={28}
-            color={feito ? C.success : C.textTer}
-          />
+
+        <Pressable
+          onPress={() =>
+        router.push({ pathname: "/treino/[id]", params: { id: treino.id } })
+      }
+          style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}
+        >
+          <Ionicons name="play" size={16} color={C.brand} />
+          <T c="brand" size={14} weight="700">
+            {hoje ? "Iniciar treino de hoje" : "Abrir treino"}
+          </T>
         </Pressable>
-      </View>
-
-      <View style={s.specRow}>
-        <Spec label="Séries" value={String(ex.series)} />
-        <Spec label="Reps" value={ex.reps} />
-        <Spec label="Descanso" value={`${ex.descansoSeg}s`} />
-      </View>
-
-      {ex.video ? (
-        <Pressable style={s.video}>
-          <Ionicons name="play-circle" size={20} color={C.brand} />
-          <T c="brand" size={13} weight="600">
-            Ver vídeo de execução
-          </T>
-        </Pressable>
-      ) : null}
-
-      {ex.observacoes ? (
-        <View style={s.obs}>
-          <Ionicons name="information-circle" size={16} color={C.warning} />
-          <T c="textSec" size={13} style={{ flex: 1, lineHeight: 18 }}>
-            {ex.observacoes}
-          </T>
-        </View>
-      ) : null}
-
-      {/* Registro de carga (do aluno) */}
-      <View style={s.cargaRow}>
-        <T c="textTer" size={11} weight="600" style={{ letterSpacing: 0.5 }}>
-          CARGA QUE VOCÊ USOU
-        </T>
-        <View style={s.cargaInputWrap}>
-          <TextInput
-            value={carga}
-            onChangeText={onCarga}
-            placeholder="ex.: 40 kg"
-            placeholderTextColor={C.textTer}
-            style={s.cargaInput}
-          />
-        </View>
-      </View>
-    </Card>
-  );
-}
-
-function Spec({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={s.spec}>
-      <T c="textTer" size={11} weight="600">
-        {label}
-      </T>
-      <T size={15} weight="700">
-        {value}
-      </T>
-    </View>
+      </Card>
+    </Pressable>
   );
 }
 
 const s = StyleSheet.create({
-  treinoHead: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: S.sm,
+    gap: S.md,
+    padding: S.lg,
   },
-  exHead: { flexDirection: "row", alignItems: "flex-start", gap: S.sm },
-  grupo: { letterSpacing: 0.5, marginTop: 2 },
-  specRow: {
+  letra: {
+    width: 48,
+    height: 48,
+    borderRadius: R.md,
+    backgroundColor: C.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  letraHoje: {
+    backgroundColor: C.accentSoft,
+  },
+  titleRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: S.sm,
-    marginTop: S.md,
   },
-  spec: {
-    flex: 1,
-    backgroundColor: C.surfaceAlt,
-    borderRadius: R.sm,
-    paddingVertical: S.sm,
-    paddingHorizontal: S.md,
-    gap: 2,
-  },
-  video: {
+  cta: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    marginTop: S.md,
-  },
-  obs: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: S.md,
-    backgroundColor: C.warningSoft,
-    borderRadius: R.sm,
-    padding: S.md,
-  },
-  cargaRow: {
-    marginTop: S.lg,
-    paddingTop: S.md,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  cargaInputWrap: {
-    borderWidth: 1,
-    borderColor: C.borderStrong,
-    borderRadius: R.sm,
-    paddingHorizontal: S.md,
-    minWidth: 110,
-  },
-  cargaInput: {
-    height: 38,
-    fontSize: 14,
-    fontWeight: "600",
-    color: C.text,
+    backgroundColor: C.accent,
+    paddingVertical: 12,
   },
 });

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { C, R, S, Shadow } from "@/constants/coachfit";
+import { C, interFont, R, S, Shadow } from "@/constants/coachfit";
 
 /** Tela base: fundo + safe area + scroll com padding. */
 export function Screen({
@@ -148,7 +148,15 @@ export function T({
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={[{ color: C[c] as string, fontSize: size, fontWeight: weight }, style]}
+      style={[
+        {
+          color: C[c] as string,
+          fontSize: size,
+          fontWeight: weight,
+          fontFamily: interFont(weight),
+        },
+        style,
+      ]}
     >
       {children}
     </Text>
@@ -172,18 +180,30 @@ export const st = StyleSheet.create({
     color: C.textTer,
     fontSize: 11,
     fontWeight: "600",
+    fontFamily: interFont("600"),
     letterSpacing: 0.6,
     textTransform: "uppercase",
     marginBottom: 2,
   },
   h1: {
     color: C.text,
-    fontSize: 26,
-    fontWeight: "700",
-    letterSpacing: -0.4,
+    fontSize: 27,
+    fontWeight: "800",
+    fontFamily: interFont("800"),
+    letterSpacing: -0.6,
   },
-  subtitle: { color: C.textSec, fontSize: 14, marginTop: 2 },
-  sectionTitle: { color: C.text, fontSize: 17, fontWeight: "700" },
+  subtitle: {
+    color: C.textSec,
+    fontSize: 14,
+    marginTop: 2,
+    fontFamily: interFont("400"),
+  },
+  sectionTitle: {
+    color: C.text,
+    fontSize: 17,
+    fontWeight: "700",
+    fontFamily: interFont("700"),
+  },
   card: {
     backgroundColor: C.surface,
     borderRadius: R.lg,
@@ -200,11 +220,15 @@ export const st = StyleSheet.create({
     borderRadius: R.pill,
     alignSelf: "flex-start",
   },
-  badgeText: { fontSize: 12, fontWeight: "600" },
+  badgeText: { fontSize: 12, fontWeight: "600", fontFamily: interFont("600") },
   avatar: {
     backgroundColor: C.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: C.textSec, fontWeight: "700" },
+  avatarText: {
+    color: C.textSec,
+    fontWeight: "700",
+    fontFamily: interFont("700"),
+  },
 });
