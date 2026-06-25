@@ -28,6 +28,14 @@ export default function Root({ children }: PropsWithChildren) {
           href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        {/* Fonte de marca para títulos (servida de /public/fonts). */}
+        <link
+          rel="preload"
+          href="/fonts/BlandyGrotesque.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
 
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalCss }} />
@@ -38,6 +46,13 @@ export default function Root({ children }: PropsWithChildren) {
 }
 
 const globalCss = `
+@font-face {
+  font-family: 'Blandy Grotesque';
+  src: url('/fonts/BlandyGrotesque.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 html, body, #root {
   font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }

@@ -3,11 +3,13 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar, Card, Screen, ScreenHeader, T } from "@/components/ui";
-import { C, dataFont, interFont, R, S } from "@/constants/coachfit";
-import { aluno, checkins, metaKcal, totalKcal, treinos } from "@/data/aluno";
+import { C, dataFont, interFont, R, S, titleFont } from "@/constants/coachfit";
+import { aluno, checkins, metaKcal, totalKcal } from "@/data/aluno";
+import { useTreinos } from "@/lib/db";
 
 export default function HojeScreen() {
   const router = useRouter();
+  const { treinos } = useTreinos();
   const treinoHoje = treinos[0];
   const kcal = totalKcal();
   const checkinAberto = checkins.find((c) => c.status === "aguardando");
@@ -72,8 +74,8 @@ export default function HojeScreen() {
       <NavCard
         icon="barbell"
         tone="petrol"
-        title={treinoHoje.nome}
-        meta={`${treinoHoje.exercicios.length} exercícios`}
+        title={treinoHoje?.nome ?? "Sem treino hoje"}
+        meta={treinoHoje ? `${treinoHoje.exercicios.length} exercícios` : "—"}
         label="TREINO DE HOJE"
         onPress={() => router.push("/treino")}
       />
@@ -188,7 +190,7 @@ const hero = StyleSheet.create({
     color: C.textOnDarkStrong,
     fontSize: 20,
     fontWeight: "800",
-    fontFamily: interFont("800"),
+    fontFamily: titleFont(),
     letterSpacing: -0.4,
     marginTop: S.md,
   },

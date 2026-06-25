@@ -8,7 +8,7 @@ import {
 } from "react-native";
 
 import { T } from "@/components/ui";
-import { C, interFont, R, S } from "@/constants/coachfit";
+import { C, interFont, R, S, titleFont } from "@/constants/coachfit";
 
 /** Cabeçalho de marca das telas de auth (logo + título + subtítulo). */
 export function AuthHero({ titulo, sub }: { titulo: string; sub: string }) {
@@ -25,7 +25,11 @@ export function AuthHero({ titulo, sub }: { titulo: string; sub: string }) {
       >
         COACHFIT
       </T>
-      <T size={28} weight="800" style={{ letterSpacing: -0.6, marginTop: 4 }}>
+      <T
+        size={28}
+        weight="800"
+        style={{ letterSpacing: -0.6, marginTop: 4, fontFamily: titleFont() }}
+      >
         {titulo}
       </T>
       <T c="textSec" size={15} style={{ marginTop: 6, lineHeight: 21 }}>

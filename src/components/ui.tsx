@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { C, interFont, R, S, Shadow } from "@/constants/coachfit";
+import { C, interFont, R, S, Shadow, titleFont } from "@/constants/coachfit";
 
 /** Tela base: fundo + safe area + scroll com padding. */
 export function Screen({
@@ -189,7 +189,7 @@ export const st = StyleSheet.create({
     color: C.text,
     fontSize: 27,
     fontWeight: "800",
-    fontFamily: interFont("800"),
+    fontFamily: titleFont(),
     letterSpacing: -0.6,
   },
   subtitle: {

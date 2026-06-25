@@ -14,12 +14,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { T } from "@/components/ui";
 import { AuthField, AuthHero, authStyles as a } from "@/components/auth";
 import { C } from "@/constants/coachfit";
+import { useAuth } from "@/lib/auth";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [ver, setVer] = useState(false);
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  async function entrar() {
+    setErro("");
+    setCarregando(true);
+    try {
+      await signIn(email, senha);
+      // navegação é feita pelo guard ao detectar a sessão
+    } catch {
+      setErro("E-mail ou senha inválidos.");
+    } finally {
+      setCarregando(false);
+    }
+  }
 
   return (
     <SafeAreaView style={a.screen} edges={["top", "bottom"]}>
@@ -75,12 +92,22 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
+            {erro ? (
+              <T c="danger" size={13} weight="600">
+                {erro}
+              </T>
+            ) : null}
+
             <Pressable
-              style={({ pressed }) => [a.cta, pressed && { opacity: 0.85 }]}
-              onPress={() => router.replace("/")}
+              style={({ pressed }) => [
+                a.cta,
+                (pressed || carregando) && { opacity: 0.85 },
+              ]}
+              onPress={entrar}
+              disabled={carregando}
             >
               <T c="brand" size={16} weight="700">
-                Entrar
+                {carregando ? "Entrando…" : "Entrar"}
               </T>
               <Ionicons name="arrow-forward" size={20} color={C.brand} />
             </Pressable>

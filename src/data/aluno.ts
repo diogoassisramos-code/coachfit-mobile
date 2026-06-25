@@ -102,6 +102,32 @@ export const aluno = {
   statusPagamento: "em_dia" as "em_dia" | "pendente" | "atrasado",
 };
 
+/** Forma de pagamento da assinatura: cartão de crédito recorrente ou Pix. */
+export type MetodoPagamento = "cartao" | "pix";
+
+export type Cartao = {
+  bandeira: string; // "Visa", "Mastercard"…
+  final: string; // últimos 4 dígitos
+  validade: string; // "MM/AA"
+  nome: string; // nome impresso
+};
+
+/**
+ * Dados da cobrança/assinatura do aluno. `metodo` é o estado inicial — a tela
+ * de pagamento permite trocar entre cartão e Pix (estado efêmero, sem backend).
+ */
+export const pagamento = {
+  valor: "R$ 199,00",
+  recorrencia: "Mensal",
+  metodo: "cartao" as MetodoPagamento,
+  cartao: {
+    bandeira: "Visa",
+    final: "4242",
+    validade: "12/27",
+    nome: "ANA P SOUZA",
+  } as Cartao,
+};
+
 export const treinos: Treino[] = [
   {
     id: "tA",

@@ -4,9 +4,11 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, R, S } from "@/constants/coachfit";
-import { Treino, treinos } from "@/data/aluno";
+import { type Treino } from "@/data/aluno";
+import { useTreinos } from "@/lib/db";
 
 export default function TreinoScreen() {
+  const { treinos } = useTreinos();
   return (
     <Screen>
       <ScreenHeader
@@ -47,7 +49,11 @@ function TreinoCard({ treino, letra }: { treino: Treino; letra: string }) {
               <T size={16} weight="700" numberOfLines={1} style={{ flex: 1 }}>
                 {treino.nome}
               </T>
-              <Badge tone={hoje ? "brand" : "neutral"}>{treino.diaSemana}</Badge>
+              {treino.diaSemana ? (
+                <Badge tone={hoje ? "brand" : "neutral"}>
+                  {treino.diaSemana}
+                </Badge>
+              ) : null}
             </View>
             <T c="textSec" size={13} style={{ marginTop: 4 }}>
               {treino.exercicios.length} exercícios · {series} séries

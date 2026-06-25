@@ -142,3 +142,13 @@ export function dataFont(weight?: string | number): string | undefined {
       return SPACE.regular;
   }
 }
+
+/**
+ * Fonte de **títulos / display de marca** = **Blandy Grotesque** (peso único).
+ * No **nativo** é carregada via `useFonts` no `_layout` (família
+ * "BlandyGrotesque"); no **web** via `@font-face` no `+html.tsx`
+ * (família "Blandy Grotesque"). Como tem um só peso, ignora o argumento.
+ */
+export function titleFont(): string {
+  return Platform.OS === "web" ? "Blandy Grotesque" : "BlandyGrotesque";
+}

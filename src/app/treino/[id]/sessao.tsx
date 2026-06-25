@@ -5,8 +5,9 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, T } from "@/components/ui";
-import { C, dataFont, R, S } from "@/constants/coachfit";
-import { Exercicio, treinos } from "@/data/aluno";
+import { C, dataFont, R, S, titleFont } from "@/constants/coachfit";
+import { type Exercicio } from "@/data/aluno";
+import { useTreinos } from "@/lib/db";
 
 const fmt = (s: number) =>
   `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -14,9 +15,14 @@ const fmt = (s: number) =>
 export default function SessaoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { treinos, loading } = useTreinos();
   const treino = treinos.find((t) => t.id === id);
   const [idx, setIdx] = useState(0);
   const [finished, setFinished] = useState(false);
+
+  if (loading) {
+    return <SafeAreaView style={st.screen} />;
+  }
 
   if (!treino) {
     return (
@@ -44,7 +50,11 @@ export default function SessaoScreen() {
           <View style={st.successIcon}>
             <Ionicons name="checkmark" size={42} color={C.accentDeep} />
           </View>
-          <T size={23} weight="800" style={{ textAlign: "center" }}>
+          <T
+            size={23}
+            weight="800"
+            style={{ textAlign: "center", fontFamily: titleFont() }}
+          >
             Treino concluído!
           </T>
           <T c="textSec" size={15} style={{ textAlign: "center", lineHeight: 22 }}>
@@ -152,7 +162,11 @@ function ExerciseBody({ ex }: { ex: Exercicio }) {
         <T c="textTer" size={11} weight="700" style={{ letterSpacing: 0.6 }}>
           {ex.grupo.toUpperCase()}
         </T>
-        <T size={24} weight="800" style={{ letterSpacing: -0.5, marginTop: 4 }}>
+        <T
+          size={24}
+          weight="800"
+          style={{ letterSpacing: -0.5, marginTop: 4, fontFamily: titleFont() }}
+        >
           {ex.nome}
         </T>
 

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Avatar, Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, R, S } from "@/constants/coachfit";
 import { aluno, checkins } from "@/data/aluno";
+import { useAuth } from "@/lib/auth";
 
 const PGTO = {
   em_dia: { label: "Em dia", tone: "success" as const },
@@ -14,6 +15,7 @@ const PGTO = {
 
 export default function PerfilScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const pgto = PGTO[aluno.statusPagamento];
 
   return (
@@ -56,6 +58,17 @@ export default function PerfilScreen() {
           </View>
           <Badge tone={pgto.tone}>{pgto.label}</Badge>
         </View>
+
+        <Pressable
+          onPress={() => router.push("/pagamento")}
+          style={({ pressed }) => [s.manageBtn, pressed && { opacity: 0.85 }]}
+        >
+          <Ionicons name="card-outline" size={18} color={C.accentDeep} />
+          <T c="accentDeep" size={14} weight="700" style={{ flex: 1 }}>
+            Gerenciar plano e pagamento
+          </T>
+          <Ionicons name="chevron-forward" size={18} color={C.accentDeep} />
+        </Pressable>
       </Card>
 
       {/* Histórico de check-ins */}
@@ -117,7 +130,7 @@ export default function PerfilScreen() {
           label="Sair"
           danger
           last
-          onPress={() => router.replace("/login")}
+          onPress={() => signOut()}
         />
       </Card>
     </Screen>
@@ -178,6 +191,16 @@ function Action({
 const s = StyleSheet.create({
   profileRow: { flexDirection: "row", alignItems: "center", gap: S.md },
   label: { letterSpacing: 0.5, marginBottom: S.sm },
+  manageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: S.sm,
+    marginTop: S.sm,
+    backgroundColor: C.accentSoft,
+    borderRadius: R.md,
+    paddingVertical: S.md,
+    paddingHorizontal: S.lg,
+  },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",

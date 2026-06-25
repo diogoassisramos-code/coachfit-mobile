@@ -14,9 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { T } from "@/components/ui";
 import { AuthField, AuthHero, authStyles as a } from "@/components/auth";
 import { C } from "@/constants/coachfit";
+import { useAuth } from "@/lib/auth";
 
 export default function CadastroScreen() {
   const router = useRouter();
+  const { signUp } = useAuth();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -89,7 +91,9 @@ export default function CadastroScreen() {
 
             <Pressable
               style={({ pressed }) => [a.cta, pressed && { opacity: 0.85 }]}
-              onPress={() => router.replace("/")}
+              onPress={() => {
+                signUp(email, senha).catch(() => {});
+              }}
             >
               <T c="brand" size={16} weight="700">
                 Criar conta

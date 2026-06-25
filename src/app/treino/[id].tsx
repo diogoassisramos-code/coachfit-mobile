@@ -5,13 +5,19 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, T } from "@/components/ui";
-import { C, dataFont, R, S } from "@/constants/coachfit";
-import { Exercicio, treinos } from "@/data/aluno";
+import { C, dataFont, R, S, titleFont } from "@/constants/coachfit";
+import { type Exercicio } from "@/data/aluno";
+import { useTreinos } from "@/lib/db";
 
 export default function TreinoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { treinos, loading } = useTreinos();
   const treino = treinos.find((t) => t.id === id);
+
+  if (loading) {
+    return <SafeAreaView style={st.screen} />;
+  }
 
   if (!treino) {
     return (
@@ -66,7 +72,12 @@ export default function TreinoDetailScreen() {
           <T
             size={23}
             weight="800"
-            style={{ color: C.textOnDarkStrong, marginTop: S.md, letterSpacing: -0.4 }}
+            style={{
+              color: C.textOnDarkStrong,
+              marginTop: S.md,
+              letterSpacing: -0.4,
+              fontFamily: titleFont(),
+            }}
           >
             {treino.nome}
           </T>
