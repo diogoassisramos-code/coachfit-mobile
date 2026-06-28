@@ -4,14 +4,20 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, dataFont, interFont, R, S, titleFont } from "@/constants/coachfit";
-import { aluno, checkins, metaKcal, totalKcal } from "@/data/aluno";
-import { useTreinos } from "@/lib/db";
+import { aluno, checkins, metaKcal } from "@/data/aluno";
+import { useDieta, useProtocolo, useTreinos } from "@/lib/db";
 
 export default function HojeScreen() {
   const router = useRouter();
   const { treinos } = useTreinos();
+  const { refeicoes } = useDieta();
+  const { protocolo } = useProtocolo();
   const treinoHoje = treinos[0];
-  const kcal = totalKcal();
+  const kcal = refeicoes.reduce(
+    (s, r) => s + r.alimentos.reduce((x, a) => x + a.macros.kcal, 0),
+    0
+  );
+  const protocoloItens = protocolo.reduce((n, b) => n + b.itens.length, 0);
   const checkinAberto = checkins.find((c) => c.status === "aguardando");
 
   return (
@@ -85,7 +91,7 @@ export default function HojeScreen() {
         icon="restaurant"
         tone="mint"
         title={`${kcal.toLocaleString("pt-BR")} / ${metaKcal.toLocaleString("pt-BR")} kcal`}
-        meta="3 refeições planejadas"
+        meta={`${refeicoes.length} refeições planejadas`}
         label="SUA DIETA"
         onPress={() => router.push("/dieta")}
       />
@@ -95,7 +101,7 @@ export default function HojeScreen() {
         icon="medkit"
         tone="lilac"
         title="Protocolo & suplementos"
-        meta="5 itens hoje"
+        meta={`${protocoloItens} itens`}
         label="EXTRAS"
         onPress={() => router.push("/protocolo")}
       />

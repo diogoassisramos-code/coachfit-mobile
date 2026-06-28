@@ -1,5 +1,3 @@
-import { Platform } from "react-native";
-
 /**
  * Tokens de design do **CoachFit Design System** (identidade editorial:
  * grounds petrol profundo, accent mint, lilac secundário, superfícies ice).
@@ -101,15 +99,16 @@ const SPACE = {
 } as const;
 
 /**
- * Fonte de texto/display = **Hanken Grotesk**, por peso. No **web** retornamos a
- * família "Hanken Grotesk" (carregada via `+html.tsx`) — é preciso setar
- * explicitamente porque o react-native-web aplica a fonte do sistema em todo
- * `Text`. No **nativo** mapeamos para a família estática do peso.
+ * Fonte de texto/display = **Hanken Grotesk**, por peso. Em nativo E web usamos
+ * as famílias estáticas carregadas via `useFonts` no `_layout` — no web export
+ * SPA o `+html.tsx` (Google Fonts) não é aplicado, então as fontes do `useFonts`
+ * (registradas em runtime) são a fonte de verdade nos dois ambientes. É preciso
+ * setar explicitamente porque o react-native-web aplica a fonte do sistema em
+ * todo `Text`.
  *
  * (Mantém o nome `interFont` por compatibilidade com os imports existentes.)
  */
 export function interFont(weight?: string | number): string | undefined {
-  if (Platform.OS === "web") return "Hanken Grotesk";
   switch (String(weight)) {
     case "800":
     case "900":
@@ -128,7 +127,6 @@ export function interFont(weight?: string | number): string | undefined {
 
 /** Fonte de dados/números = **Space Grotesk** (pesos, R$, métricas). */
 export function dataFont(weight?: string | number): string | undefined {
-  if (Platform.OS === "web") return "Space Grotesk";
   switch (String(weight)) {
     case "700":
     case "800":
@@ -144,11 +142,10 @@ export function dataFont(weight?: string | number): string | undefined {
 }
 
 /**
- * Fonte de **títulos / display de marca** = **Blandy Grotesque** (peso único).
- * No **nativo** é carregada via `useFonts` no `_layout` (família
- * "BlandyGrotesque"); no **web** via `@font-face` no `+html.tsx`
- * (família "Blandy Grotesque"). Como tem um só peso, ignora o argumento.
+ * Fonte de **títulos / display de marca** = **Blandy Grotesque** (peso único),
+ * carregada via `useFonts` no `_layout` (família "BlandyGrotesque") — em nativo
+ * e web.
  */
 export function titleFont(): string {
-  return Platform.OS === "web" ? "Blandy Grotesque" : "BlandyGrotesque";
+  return "BlandyGrotesque";
 }

@@ -4,12 +4,14 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, dataFont, R, S } from "@/constants/coachfit";
-import { Refeicao, metaKcal, refeicoes } from "@/data/aluno";
+import { type Refeicao, metaKcal } from "@/data/aluno";
+import { useDieta } from "@/lib/db";
 
 const refKcal = (r: Refeicao) =>
   r.alimentos.reduce((s, a) => s + a.macros.kcal, 0);
 
 export default function DietaScreen() {
+  const { refeicoes } = useDieta();
   const [marcadas, setMarcadas] = useState<Record<string, boolean>>({});
   const consumido = refeicoes.reduce(
     (s, r) => s + (marcadas[r.id] ? refKcal(r) : 0),

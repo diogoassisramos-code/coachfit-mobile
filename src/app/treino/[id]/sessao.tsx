@@ -148,8 +148,10 @@ function ExerciseBody({ ex }: { ex: Exercicio }) {
   const done = left === 0;
 
   const concluirSerie = () => {
-    const r = restFor(Math.min(ex.series - 1, setsDone));
-    setSetsDone((n) => Math.min(ex.series, n + 1));
+    const novo = Math.min(ex.series, setsDone + 1);
+    setSetsDone(novo);
+    // descanso da série em que você passa a estar agora (a atual após concluir)
+    const r = restFor(Math.min(ex.series - 1, novo));
     setBaseRest(r);
     setLeft(r);
     setRunning(true);

@@ -4,9 +4,11 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, R, S } from "@/constants/coachfit";
-import { ProtocoloItem, protocolo } from "@/data/aluno";
+import { type ProtocoloItem } from "@/data/aluno";
+import { useProtocolo } from "@/lib/db";
 
 export default function ProtocoloScreen() {
+  const { protocolo } = useProtocolo();
   const [tomados, setTomados] = useState<Record<string, boolean>>({});
   const total = protocolo.reduce((n, b) => n + b.itens.length, 0);
 
