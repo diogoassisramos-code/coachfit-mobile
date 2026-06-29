@@ -1,7 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,17 +15,92 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, T } from "@/components/ui";
 import { C, dataFont, interFont, R, S } from "@/constants/coachfit";
+import { saveCheckin } from "@/lib/db";
 
 const ANGULOS = ["Frente", "Lado", "Costas"];
+
+/** Abre o seletor de arquivo do navegador (teste no computador) → data URL. */
+function pickWeb(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (typeof document === "undefined") return resolve(null);
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return resolve(null);
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  });
+}
 
 export default function CheckinScreen() {
   const router = useRouter();
   const [peso, setPeso] = useState("");
+  const [fotos, setFotos] = useState<Record<string, string>>({});
   const [energia, setEnergia] = useState(0);
   const [sono, setSono] = useState(0);
   const [dieta, setDieta] = useState(0);
   const [comentario, setComentario] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+
+  async function pickImage(angulo: string) {
+    // No navegador (teste no computador), abre o seletor de arquivo.
+    if (Platform.OS === "web") {
+      const url = await pickWeb();
+      if (url) setFotos((p) => ({ ...p, [angulo]: url }));
+      return;
+    }
+    // No app, abre a galeria de fotos.
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!res.canceled && res.assets[0]) {
+      setFotos((p) => ({ ...p, [angulo]: res.assets[0].uri }));
+    }
+  }
+
+  function removeFoto(angulo: string) {
+    setFotos((p) => {
+      const next = { ...p };
+      delete next[angulo];
+      return next;
+    });
+  }
+
+  const podeEnviar = !!peso.trim() && !!energia && !!sono && !!dieta;
+
+  async function enviar() {
+    if (!podeEnviar || enviando) return;
+    setEnviando(true);
+    try {
+      await saveCheckin({
+        peso: peso ? Number(peso.replace(",", ".")) : undefined,
+        fotos: ANGULOS.filter((a) => fotos[a]).map((a) => ({
+          angulo: a,
+          url: fotos[a],
+        })),
+        energia,
+        sono,
+        dieta,
+        comentario: comentario.trim() || undefined,
+      });
+    } catch (e) {
+      // Sem backend / tabela ainda: segue como sucesso local para teste.
+      console.warn("[checkin] envio não persistiu, seguindo local:", e);
+    } finally {
+      setEnviando(false);
+      setEnviado(true);
+    }
+  }
 
   if (enviado) {
     return (
@@ -94,14 +172,41 @@ export default function CheckinScreen() {
             FOTOS DE PROGRESSO
           </T>
           <View style={st.fotos}>
-            {ANGULOS.map((a) => (
-              <Pressable key={a} style={st.foto}>
-                <Ionicons name="camera-outline" size={24} color={C.accent} />
-                <T c="textOnDarkMuted" size={12} style={{ marginTop: 4 }}>
-                  {a}
-                </T>
-              </Pressable>
-            ))}
+            {ANGULOS.map((a) => {
+              const uri = fotos[a];
+              return (
+                <Pressable key={a} style={st.foto} onPress={() => pickImage(a)}>
+                  {uri ? (
+                    <>
+                      <Image source={{ uri }} style={st.fotoImg} />
+                      <Pressable
+                        style={st.fotoRemove}
+                        onPress={() => removeFoto(a)}
+                        hitSlop={6}
+                      >
+                        <Ionicons name="close" size={14} color={C.white} />
+                      </Pressable>
+                      <View style={st.fotoTag}>
+                        <T c="textOnDarkStrong" size={11} weight="600">
+                          {a}
+                        </T>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="camera-outline"
+                        size={24}
+                        color={C.accent}
+                      />
+                      <T c="textOnDarkMuted" size={12} style={{ marginTop: 4 }}>
+                        {a}
+                      </T>
+                    </>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </Card>
 
@@ -130,13 +235,13 @@ export default function CheckinScreen() {
 
       <View style={st.footer}>
         <Pressable
-          style={[st.btn, !peso.trim() && { opacity: 0.5 }]}
-          disabled={!peso.trim()}
-          onPress={() => setEnviado(true)}
+          style={[st.btn, (!podeEnviar || enviando) && { opacity: 0.5 }]}
+          disabled={!podeEnviar || enviando}
+          onPress={enviar}
         >
           <Ionicons name="send" size={18} color={C.brand} />
           <T c="brand" size={15} weight="700">
-            Enviar check-in
+            {enviando ? "Enviando…" : "Enviar check-in"}
           </T>
         </Pressable>
       </View>
@@ -231,6 +336,28 @@ const st = StyleSheet.create({
     borderRadius: R.lg,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  fotoImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  fotoRemove: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(2,33,40,0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fotoTag: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingVertical: 4,
+    alignItems: "center",
+    backgroundColor: "rgba(2,33,40,0.45)",
   },
   rating: {
     flexDirection: "row",

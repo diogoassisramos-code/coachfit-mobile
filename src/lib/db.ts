@@ -242,3 +242,68 @@ export function useProtocolo(): {
   }, []);
   return { protocolo, loading };
 }
+
+// ── Check-in (envio do aluno) ───────────────────────────────────────────────
+
+/** aluno_id do usuário logado (lido do profile). null se não for aluno. */
+export async function getMyAlunoId(): Promise<string | null> {
+  if (!supabase) return null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("aluno_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  return data?.aluno_id ?? null;
+}
+
+export type EnvioCheckin = {
+  peso?: number;
+  fotos: { angulo: string; url: string }[];
+  energia: number; // 1–5
+  sono: number; // 1–5
+  dieta: number; // 1–5
+  comentario?: string;
+};
+
+/**
+ * Envia o check-in da semana para o mesmo `checkins` que o dashboard do
+ * consultor lê (RLS: aluno insere o próprio). A semana é a próxima após a
+ * última registrada. Requer a tabela `checkins` (supabase/schema_checkin.sql).
+ */
+export async function saveCheckin(input: EnvioCheckin): Promise<void> {
+  if (!supabase) throw new Error("sem supabase");
+  const alunoId = await getMyAlunoId();
+  if (!alunoId) throw new Error("sem aluno na sessão");
+
+  const { data: existentes, error: exErr } = await supabase
+    .from("checkins")
+    .select("semana")
+    .eq("aluno_id", alunoId);
+  if (exErr) throw exErr;
+  const semana = existentes?.length
+    ? Math.max(...existentes.map((c: any) => c.semana)) + 1
+    : 1;
+
+  const fotos = input.fotos.map((f) => ({
+    id: f.angulo,
+    angulo: f.angulo,
+    url: f.url,
+  }));
+
+  const { error } = await supabase.from("checkins").insert({
+    aluno_id: alunoId,
+    semana,
+    peso: input.peso ?? null,
+    fotos,
+    energia: input.energia,
+    sono: input.sono,
+    dieta: input.dieta,
+    comentario: input.comentario || null,
+    status: "pendente",
+  });
+  if (error) throw error;
+}
