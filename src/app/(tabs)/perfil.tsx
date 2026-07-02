@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Avatar, Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, R, S } from "@/constants/coachfit";
-import { aluno, checkins } from "@/data/aluno";
+import { aluno } from "@/data/aluno";
 import { useAuth } from "@/lib/auth";
+import { useMyCheckinsFull } from "@/lib/db";
 
 const PGTO = {
   em_dia: { label: "Em dia", tone: "success" as const },
@@ -16,6 +18,13 @@ const PGTO = {
 export default function PerfilScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
+  const { checkins, refetch } = useMyCheckinsFull();
+  // Re-lê ao focar a tela (ex.: depois que o coach responde um check-in).
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const pgto = PGTO[aluno.statusPagamento];
 
   return (
@@ -107,12 +116,14 @@ export default function PerfilScreen() {
                   </T>
                 ) : null}
               </View>
-              {c.status === "aguardando" ? (
-                <Badge tone="brand">Responder</Badge>
-              ) : (
+              {c.status === "respondido" ? (
                 <Badge tone="success" icon="checkmark">
                   Respondido
                 </Badge>
+              ) : c.status === "pendente" ? (
+                <Badge tone="brand">Aguardando</Badge>
+              ) : (
+                <Badge tone="brand">Responder</Badge>
               )}
               <Ionicons name="chevron-forward" size={18} color={C.textTer} />
             </Pressable>

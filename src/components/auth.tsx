@@ -6,29 +6,21 @@ import {
   TextInputProps,
   View,
 } from "react-native";
+import { SvgXml } from "react-native-svg";
 
 import { T } from "@/components/ui";
 import { C, interFont, R, S, titleFont } from "@/constants/coachfit";
+import { REVO_WORDMARK } from "@/constants/revoLogo";
 
 /** Cabeçalho de marca das telas de auth (logo + título + subtítulo). */
 export function AuthHero({ titulo, sub }: { titulo: string; sub: string }) {
   return (
     <View style={authStyles.hero}>
-      <View style={authStyles.logo}>
-        <Ionicons name="barbell" size={28} color={C.accent} />
-      </View>
-      <T
-        size={12}
-        weight="700"
-        c="accentDeep"
-        style={{ letterSpacing: 1.2, marginTop: S.lg }}
-      >
-        COACHFIT
-      </T>
+      <SvgXml xml={REVO_WORDMARK} width={112} height={63} />
       <T
         size={28}
         weight="800"
-        style={{ letterSpacing: -0.6, marginTop: 4, fontFamily: titleFont() }}
+        style={{ letterSpacing: -0.6, marginTop: S.lg, fontFamily: titleFont() }}
       >
         {titulo}
       </T>

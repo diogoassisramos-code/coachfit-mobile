@@ -1,5 +1,5 @@
 /**
- * Tokens de design do **CoachFit Design System** (identidade editorial:
+ * Tokens de design do **Revo Design System** (identidade editorial:
  * grounds petrol profundo, accent mint, lilac secundário, superfícies ice).
  * Mantemos os nomes de token já usados no app e remapeamos para a paleta DS.
  */

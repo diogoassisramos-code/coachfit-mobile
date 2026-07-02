@@ -78,7 +78,9 @@ export type CheckIn = {
   semana: number;
   data: string;
   peso: number;
-  status: "respondido" | "aguardando";
+  // "aguardando" = pendente de envio (mock/CTA); "pendente" = enviado, aguardando
+  // resposta do coach (dados reais); "respondido" = coach já respondeu.
+  status: "respondido" | "aguardando" | "pendente";
   respostaCoach?: string;
   /** O que o aluno registrou no check-in (presente nos já enviados). */
   fotos?: FotoCheckin[];
@@ -92,7 +94,7 @@ export const aluno = {
   nome: "Ana Paula Souza",
   objetivo: "Hipertrofia",
   consultor: "Rafael Mendes",
-  consultoria: "CoachFit",
+  consultoria: "Revo",
   plano: "Consultoria Online Mensal",
   pesoAtual: 60.4,
   pesoInicial: 62.0,

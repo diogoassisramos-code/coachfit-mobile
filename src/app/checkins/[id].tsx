@@ -1,30 +1,54 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, T } from "@/components/ui";
 import { C, dataFont, R, S } from "@/constants/coachfit";
-import { aluno, checkins, getCheckin } from "@/data/aluno";
+import { aluno } from "@/data/aluno";
+import { useMyCheckinsFull } from "@/lib/db";
 
 export default function CheckinDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const c = getCheckin(id);
+  // Volta pra tela anterior; se não houver histórico (ex.: recarregou direto no
+  // detalhe), cai no Perfil em vez de não fazer nada.
+  const voltar = () =>
+    router.canGoBack() ? router.back() : router.replace("/perfil");
+  const { checkins, loading } = useMyCheckinsFull();
+  const c = checkins.find((x) => x.id === id);
 
   if (!c) {
     return (
       <SafeAreaView style={st.screen}>
         <View style={st.center}>
-          <Ionicons name="document-outline" size={40} color={C.textTer} />
-          <T size={17} weight="700">
-            Check-in não encontrado
-          </T>
-          <Pressable style={st.linkBtn} onPress={() => router.back()}>
-            <T c="brand" size={14} weight="700">
-              Voltar
-            </T>
-          </Pressable>
+          {loading ? (
+            <>
+              <ActivityIndicator color={C.accentDeep} />
+              <T c="textSec" size={14}>
+                Carregando check-in…
+              </T>
+            </>
+          ) : (
+            <>
+              <Ionicons name="document-outline" size={40} color={C.textTer} />
+              <T size={17} weight="700">
+                Check-in não encontrado
+              </T>
+              <Pressable style={st.linkBtn} onPress={voltar}>
+                <T c="brand" size={14} weight="700">
+                  Voltar
+                </T>
+              </Pressable>
+            </>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -36,7 +60,7 @@ export default function CheckinDetailScreen() {
   return (
     <SafeAreaView style={st.screen} edges={["top"]}>
       <View style={st.topbar}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={st.iconBtn}>
+        <Pressable onPress={voltar} hitSlop={8} style={st.iconBtn}>
           <Ionicons name="chevron-back" size={22} color={C.text} />
         </Pressable>
         <T size={15} weight="700">
@@ -119,10 +143,20 @@ export default function CheckinDetailScreen() {
             <View style={st.fotos}>
               {c.fotos.map((f) => (
                 <View key={f.angulo} style={st.foto}>
-                  <Ionicons name="image-outline" size={22} color={C.accent} />
-                  <T c="textOnDarkMuted" size={12} style={{ marginTop: 4 }}>
-                    {f.angulo}
-                  </T>
+                  {f.url ? (
+                    <Image
+                      source={{ uri: f.url }}
+                      style={st.fotoImg}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Ionicons name="image-outline" size={22} color={C.accent} />
+                  )}
+                  <View style={st.fotoTag}>
+                    <T c="textOnDarkStrong" size={11} weight="600">
+                      {f.angulo}
+                    </T>
+                  </View>
                 </View>
               ))}
             </View>
@@ -268,6 +302,17 @@ const st = StyleSheet.create({
     borderRadius: R.lg,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  fotoImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  fotoTag: {
+    position: "absolute",
+    left: 6,
+    bottom: 6,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   ratingRow: {
     flexDirection: "row",

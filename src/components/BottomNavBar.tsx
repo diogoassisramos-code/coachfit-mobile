@@ -28,7 +28,7 @@ const FALLBACK_ICON: { active: IoniconName; inactive: IoniconName } = {
 };
 
 const ICON_SIZE = 24;
-/** Cor de destaque do item ativo — mint, a "faísca" do CoachFit. */
+/** Cor de destaque do item ativo — mint, a "faísca" do Revo. */
 const ACCENT = C.accentDeep;
 
 /**

@@ -1,4 +1,4 @@
-# CoachFit — App do aluno (mobile)
+# Revo — App do aluno (mobile)
 
 App React Native (Expo) do **aluno/cliente final**, que recebe treino, dieta e protocolo enviados pelo consultor. Projeto **separado** do dashboard do consultor (web, em `../App Fitness`). Alvo: **App Store + Google Play**.
 

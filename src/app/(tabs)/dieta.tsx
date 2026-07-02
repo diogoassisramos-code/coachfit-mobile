@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, dataFont, R, S } from "@/constants/coachfit";
-import { type Refeicao, metaKcal } from "@/data/aluno";
+import { type Refeicao } from "@/data/aluno";
 import { useDieta } from "@/lib/db";
 
 const refKcal = (r: Refeicao) =>
@@ -13,6 +13,8 @@ const refKcal = (r: Refeicao) =>
 export default function DietaScreen() {
   const { refeicoes } = useDieta();
   const [marcadas, setMarcadas] = useState<Record<string, boolean>>({});
+  // Meta do dia = SOMA das refeições do plano que o consultor montou.
+  const total = refeicoes.reduce((s, r) => s + refKcal(r), 0);
   const consumido = refeicoes.reduce(
     (s, r) => s + (marcadas[r.id] ? refKcal(r) : 0),
     0
@@ -30,14 +32,16 @@ export default function DietaScreen() {
             {consumido.toLocaleString("pt-BR")}
           </T>
           <T c="textTer" size={14}>
-            / {metaKcal.toLocaleString("pt-BR")} kcal consumidas
+            / {total.toLocaleString("pt-BR")} kcal do plano
           </T>
         </View>
         <View style={s.barTrack}>
           <View
             style={[
               s.barFill,
-              { width: `${Math.min(100, (consumido / metaKcal) * 100)}%` },
+              {
+                width: `${total > 0 ? Math.min(100, (consumido / total) * 100) : 0}%`,
+              },
             ]}
           />
         </View>

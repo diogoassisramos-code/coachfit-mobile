@@ -1,24 +1,57 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, dataFont, interFont, R, S, titleFont } from "@/constants/coachfit";
-import { aluno, checkins, metaKcal } from "@/data/aluno";
-import { useDieta, useProtocolo, useTreinos } from "@/lib/db";
+import { aluno } from "@/data/aluno";
+import {
+  useCheckinSolicitado,
+  useDieta,
+  useMyCheckins,
+  useProtocolo,
+  useTreinos,
+} from "@/lib/db";
 
 export default function HojeScreen() {
   const router = useRouter();
   const { treinos } = useTreinos();
   const { refeicoes } = useDieta();
   const { protocolo } = useProtocolo();
+  const { checkins, refetch: refetchCheckins } = useMyCheckins();
+  const {
+    solicitado,
+    msg: solicitacaoMsg,
+    refetch: refetchSolic,
+  } = useCheckinSolicitado();
+  // Re-lê check-ins e a solicitação ao voltar pra home (ex.: após enviar).
+  useFocusEffect(
+    useCallback(() => {
+      refetchCheckins();
+      refetchSolic();
+    }, [refetchCheckins, refetchSolic])
+  );
+
   const treinoHoje = treinos[0];
   const kcal = refeicoes.reduce(
     (s, r) => s + r.alimentos.reduce((x, a) => x + a.macros.kcal, 0),
     0
   );
   const protocoloItens = protocolo.reduce((n, b) => n + b.itens.length, 0);
-  const checkinAberto = checkins.find((c) => c.status === "aguardando");
+
+  // Estado do check-in a partir do último envio do aluno (banco).
+  const ultimo = checkins.length ? checkins[checkins.length - 1] : undefined;
+  const semanaAtual = ultimo ? ultimo.semana + 1 : 1;
+  const aguardando = ultimo?.status === "pendente" ? ultimo : undefined;
+
+  // Peso atual e aderência derivam do último check-in (senão, mock inicial).
+  const pesoAtual = ultimo?.peso || aluno.pesoAtual;
+  const aderencia =
+    ultimo && ultimo.treinosTotais > 0
+      ? Math.round((ultimo.treinosFeitos / ultimo.treinosTotais) * 100)
+      : aluno.aderencia;
+  const deltaPeso = pesoAtual - aluno.pesoInicial;
 
   return (
     <Screen>
@@ -30,28 +63,80 @@ export default function HojeScreen() {
       />
 
       {/* Check-in da semana — módulo petrol com losango mint */}
-      {checkinAberto ? (
-        <View style={hero.card}>
-          <View style={hero.diamond} />
-          <View style={hero.eyebrowPill}>
-            <Ionicons name="calendar-outline" size={13} color={C.accent} />
-            <Text style={hero.eyebrowText}>
-              Check-in da semana {checkinAberto.semana}
-            </Text>
-          </View>
-          <Text style={hero.title}>Hora do seu check-in semanal</Text>
-          <Text style={hero.body}>
-            Registre peso, fotos e como foi a semana pro {aluno.consultor}{" "}
-            ajustar seu plano.
+      <View style={hero.card}>
+        <View style={hero.diamond} />
+        <View style={hero.eyebrowPill}>
+          <Ionicons
+            name={
+              aguardando
+                ? "checkmark-circle"
+                : solicitado
+                  ? "notifications"
+                  : "calendar-outline"
+            }
+            size={13}
+            color={C.accent}
+          />
+          <Text style={hero.eyebrowText}>
+            {aguardando
+              ? `Check-in da semana ${aguardando.semana}`
+              : solicitado
+                ? "Pedido do seu treinador"
+                : `Check-in da semana ${semanaAtual}`}
           </Text>
-          <Pressable
-            style={({ pressed }) => [hero.cta, pressed && { opacity: 0.85 }]}
-            onPress={() => router.push("/checkin")}
-          >
-            <Ionicons name="camera-outline" size={18} color={C.brand} />
-            <Text style={hero.ctaText}>Fazer check-in</Text>
-          </Pressable>
         </View>
+        {aguardando ? (
+          <>
+            <Text style={hero.title}>Check-in enviado!</Text>
+            <Text style={hero.body}>
+              Recebemos seu check-in. {aluno.consultor} vai analisar e responder
+              em breve.
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={hero.title}>
+              {solicitado
+                ? `${aluno.consultor} pediu seu check-in!`
+                : "Hora do seu check-in semanal"}
+            </Text>
+            <Text style={hero.body}>
+              {solicitado && solicitacaoMsg
+                ? solicitacaoMsg
+                : `Registre peso, fotos e como foi a semana pro ${aluno.consultor} ajustar seu plano.`}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [hero.cta, pressed && { opacity: 0.85 }]}
+              onPress={() => router.push("/checkin")}
+            >
+              <Ionicons name="camera-outline" size={18} color={C.brand} />
+              <Text style={hero.ctaText}>Fazer check-in</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
+
+      {/* Resposta do consultor — aparece quando o último check-in foi respondido */}
+      {ultimo?.status === "respondido" && ultimo.respostaCoach ? (
+        <Card>
+          <View style={s.coachRow}>
+            <View style={s.coachIcon}>
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={20}
+                color={C.accentDeep}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <T c="textTer" size={10} weight="700" style={s.metricLabel}>
+                RESPOSTA DO CONSULTOR · SEMANA {ultimo.semana}
+              </T>
+              <T c="textSec" size={14} style={{ lineHeight: 20, marginTop: 2 }}>
+                “{ultimo.respostaCoach}”
+              </T>
+            </View>
+          </View>
+        </Card>
       ) : null}
 
       {/* Métricas rápidas */}
@@ -60,16 +145,17 @@ export default function HojeScreen() {
           <T c="textTer" size={11} weight="700" style={s.metricLabel}>
             PESO ATUAL
           </T>
-          <Text style={s.metricValue}>{aluno.pesoAtual} kg</Text>
+          <Text style={s.metricValue}>{pesoAtual} kg</Text>
           <Text style={[s.metricDelta, { color: C.accentDeep }]}>
-            {(aluno.pesoAtual - aluno.pesoInicial).toFixed(1)} kg
+            {deltaPeso >= 0 ? "+" : ""}
+            {deltaPeso.toFixed(1)} kg
           </Text>
         </Card>
         <Card style={s.metric}>
           <T c="textTer" size={11} weight="700" style={s.metricLabel}>
             ADERÊNCIA
           </T>
-          <Text style={s.metricValue}>{aluno.aderencia}%</Text>
+          <Text style={s.metricValue}>{aderencia}%</Text>
           <T c="textSec" size={12}>
             no treino
           </T>
@@ -90,7 +176,7 @@ export default function HojeScreen() {
       <NavCard
         icon="restaurant"
         tone="mint"
-        title={`${kcal.toLocaleString("pt-BR")} / ${metaKcal.toLocaleString("pt-BR")} kcal`}
+        title={`${kcal.toLocaleString("pt-BR")} kcal`}
         meta={`${refeicoes.length} refeições planejadas`}
         label="SUA DIETA"
         onPress={() => router.push("/dieta")}
@@ -246,6 +332,15 @@ const s = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: R.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coachRow: { flexDirection: "row", alignItems: "flex-start", gap: S.md },
+  coachIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: R.md,
+    backgroundColor: C.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
