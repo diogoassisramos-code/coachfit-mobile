@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card, T } from "@/components/ui";
 import { C, dataFont, interFont, R, S } from "@/constants/coachfit";
-import { saveCheckin, useMyCheckins } from "@/lib/db";
+import { saveCheckin, useMe, useMyCheckins } from "@/lib/db";
 
 const ANGULOS = ["Frente", "Lado", "Costas"];
 
@@ -99,6 +99,12 @@ function mensagemErro(e: unknown): string {
 
 export default function CheckinScreen() {
   const router = useRouter();
+  // Gate: com anamnese pendente, o aluno responde a anamnese ANTES do check-in.
+  const { me, loading: meLoading } = useMe();
+  useEffect(() => {
+    if (meLoading) return;
+    if (me?.anamnesePendente) router.replace("/anamnese");
+  }, [meLoading, me, router]);
   const [peso, setPeso] = useState("");
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [energia, setEnergia] = useState(0);

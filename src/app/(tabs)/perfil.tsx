@@ -7,17 +7,46 @@ import { Avatar, Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, R, S } from "@/constants/coachfit";
 import { aluno } from "@/data/aluno";
 import { useAuth } from "@/lib/auth";
-import { useMyCheckinsFull } from "@/lib/db";
+import { useMe, useMyCheckinsFull } from "@/lib/db";
+import { supabaseEnabled } from "@/lib/supabase";
 
-const PGTO = {
-  em_dia: { label: "Em dia", tone: "success" as const },
-  pendente: { label: "Pendente", tone: "warning" as const },
-  atrasado: { label: "Atrasado", tone: "danger" as const },
+type PgtoInfo = { label: string; tone: "success" | "warning" | "danger" | "brand" };
+const PGTO: Record<string, PgtoInfo> = {
+  em_dia: { label: "Em dia", tone: "success" },
+  pendente: { label: "Pendente", tone: "warning" },
+  atrasado: { label: "Atrasado", tone: "danger" },
+  novo: { label: "Novo", tone: "brand" },
 };
+
+const MESES = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+/** "2026-06-28" → "28 jun 2026" (data-only, sem fuso). */
+function formatarData(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${m[3]} ${MESES[Number(m[2]) - 1] ?? ""} ${m[1]}`;
+}
 
 export default function PerfilScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
+  const { me } = useMe();
+  // proto = demo sem Supabase (pode usar o mock). Em modo real, só dados do aluno.
+  const proto = !supabaseEnabled;
+  const nomeExibicao = me?.nome ?? aluno.nome;
+  const objetivo = me?.objetivo ?? (proto ? aluno.objetivo : "—");
+  const planoNome = me?.plano ?? (proto ? aluno.plano : "—");
+  const consultoriaNome = me?.consultoria ?? (proto ? aluno.consultoria : "—");
+  const consultorNome = me?.consultor ?? (proto ? aluno.consultor : "—");
+  const vencimento = me?.proximoVencimento
+    ? formatarData(me.proximoVencimento)
+    : proto
+      ? aluno.proximoVencimento
+      : "—";
+  const statusPgto = me?.statusPagamento ?? (proto ? aluno.statusPagamento : "novo");
+  const pgto = PGTO[statusPgto] ?? PGTO.novo;
   const { checkins, refetch } = useMyCheckinsFull();
   // Re-lê ao focar a tela (ex.: depois que o coach responde um check-in).
   useFocusEffect(
@@ -25,7 +54,6 @@ export default function PerfilScreen() {
       refetch();
     }, [refetch])
   );
-  const pgto = PGTO[aluno.statusPagamento];
 
   return (
     <Screen>
@@ -33,13 +61,13 @@ export default function PerfilScreen() {
 
       <Card>
         <View style={s.profileRow}>
-          <Avatar name={aluno.nome} size={56} />
+          <Avatar name={nomeExibicao} size={56} />
           <View style={{ flex: 1 }}>
             <T size={18} weight="700">
-              {aluno.nome}
+              {nomeExibicao}
             </T>
             <T c="textSec" size={14}>
-              {aluno.objetivo}
+              {objetivo}
             </T>
           </View>
         </View>
@@ -50,13 +78,13 @@ export default function PerfilScreen() {
         <T c="textTer" size={11} weight="600" style={s.label}>
           SEU PLANO
         </T>
-        <Info icon="card-outline" label="Plano" value={aluno.plano} />
-        <Info icon="business-outline" label="Consultoria" value={aluno.consultoria} />
-        <Info icon="person-outline" label="Consultor" value={aluno.consultor} />
+        <Info icon="card-outline" label="Plano" value={planoNome} />
+        <Info icon="business-outline" label="Consultoria" value={consultoriaNome} />
+        <Info icon="person-outline" label="Consultor" value={consultorNome} />
         <Info
           icon="calendar-outline"
           label="Próx. vencimento"
-          value={aluno.proximoVencimento}
+          value={vencimento}
         />
         <View style={[s.infoRow, { borderBottomWidth: 0 }]}>
           <View style={s.infoLeft}>
@@ -85,7 +113,13 @@ export default function PerfilScreen() {
         <T size={17} weight="700">
           Histórico de check-ins
         </T>
-        <Card flat style={{ padding: 0 }}>
+        <Card flat style={checkins.length ? { padding: 0 } : undefined}>
+          {checkins.length === 0 ? (
+            <T c="textSec" size={14}>
+              Você ainda não enviou nenhum check-in. Seu histórico aparece aqui
+              depois do primeiro envio.
+            </T>
+          ) : null}
           {checkins.map((c, i) => (
             <Pressable
               key={c.id}
@@ -133,8 +167,16 @@ export default function PerfilScreen() {
 
       {/* Ações */}
       <Card flat style={{ padding: 0 }}>
-        <Action icon="notifications-outline" label="Notificações" />
-        <Action icon="lock-closed-outline" label="Conta e senha" />
+        <Action
+          icon="notifications-outline"
+          label="Notificações"
+          onPress={() => router.push("/notificacoes")}
+        />
+        <Action
+          icon="lock-closed-outline"
+          label="Conta e senha"
+          onPress={() => router.push("/conta")}
+        />
         <Action icon="help-circle-outline" label="Ajuda e suporte" />
         <Action
           icon="log-out-outline"

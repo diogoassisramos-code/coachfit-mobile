@@ -1,27 +1,84 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Badge, Card, T } from "@/components/ui";
 import { C, dataFont, R, S, titleFont } from "@/constants/coachfit";
 import { aluno, type MetodoPagamento, pagamento } from "@/data/aluno";
+import { useMe } from "@/lib/db";
+import { supabaseEnabled } from "@/lib/supabase";
 
-const PGTO = {
-  em_dia: { label: "Em dia", tone: "success" as const },
-  pendente: { label: "Pendente", tone: "warning" as const },
-  atrasado: { label: "Atrasado", tone: "danger" as const },
+type PgtoInfo = { label: string; tone: "success" | "warning" | "danger" | "brand" };
+const PGTO: Record<string, PgtoInfo> = {
+  em_dia: { label: "Em dia", tone: "success" },
+  pendente: { label: "Pendente", tone: "warning" },
+  atrasado: { label: "Atrasado", tone: "danger" },
+  novo: { label: "Novo", tone: "brand" },
+};
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+function formatarData(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${m[3]} ${MESES[Number(m[2]) - 1] ?? ""} ${m[1]}`;
+}
+function formatBrl(v: number): string {
+  return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+type CartaoParcial = {
+  final: string;
+  bandeira?: string;
+  titular?: string;
+  validade?: string;
 };
 
 export default function PagamentoScreen() {
   const router = useRouter();
-  const pgto = PGTO[aluno.statusPagamento];
+  const { me } = useMe();
+  const proto = !supabaseEnabled;
 
-  // Estado efêmero (protótipo, sem backend): método selecionado vs. salvo.
-  const [salvo, setSalvo] = useState<MetodoPagamento>(pagamento.metodo);
-  const [metodo, setMetodo] = useState<MetodoPagamento>(pagamento.metodo);
+  const statusPgto = me?.statusPagamento ?? (proto ? aluno.statusPagamento : "novo");
+  const pgto = PGTO[statusPgto] ?? PGTO.novo;
+  const planoNome = me?.plano ?? (proto ? aluno.plano : "—");
+  const consultoria = me?.consultoria ?? (proto ? aluno.consultoria : "—");
+  const consultor = me?.consultor ?? (proto ? aluno.consultor : "—");
+  const valorLabel =
+    me?.planoValor != null ? formatBrl(me.planoValor) : proto ? pagamento.valor : "—";
+  const recorrencia = me?.planoRecorrencia ?? (proto ? pagamento.recorrencia : "mensal");
+  const vencimento = me?.proximoVencimento
+    ? formatarData(me.proximoVencimento)
+    : proto
+      ? aluno.proximoVencimento
+      : "—";
+  const cartao: CartaoParcial | undefined =
+    me?.cartao ??
+    (proto
+      ? {
+          final: pagamento.cartao.final,
+          bandeira: pagamento.cartao.bandeira,
+          titular: pagamento.cartao.nome,
+          validade: pagamento.cartao.validade,
+        }
+      : undefined);
+
+  // Método selecionado (só visual/protótipo). Inicializa com o método real
+  // do aluno assim que o perfil carrega.
+  const [salvo, setSalvo] = useState<MetodoPagamento>("cartao");
+  const [metodo, setMetodo] = useState<MetodoPagamento>("cartao");
   const [confirmado, setConfirmado] = useState(false);
+  const inicializado = useRef(false);
+  useEffect(() => {
+    if (inicializado.current) return;
+    const m = me?.metodo ?? (proto ? pagamento.metodo : undefined);
+    if (m) {
+      setSalvo(m);
+      setMetodo(m);
+      inicializado.current = true;
+    }
+  }, [me, proto]);
   const mudou = metodo !== salvo;
 
   function selecionar(m: MetodoPagamento) {
@@ -62,10 +119,10 @@ export default function PagamentoScreen() {
                 SEU PLANO
               </T>
               <T size={18} weight="700">
-                {aluno.plano}
+                {planoNome}
               </T>
               <T c="textSec" size={13} style={{ marginTop: 2 }}>
-                {aluno.consultoria} · {aluno.consultor}
+                {consultoria} · {consultor}
               </T>
             </View>
             <Badge tone={pgto.tone}>{pgto.label}</Badge>
@@ -73,18 +130,18 @@ export default function PagamentoScreen() {
 
           <View style={st.valorRow}>
             <T size={28} weight="800" style={{ fontFamily: dataFont("700"), letterSpacing: -0.5 }}>
-              {pagamento.valor}
+              {valorLabel}
             </T>
             <T c="textTer" size={15}>
               {" "}
-              /{pagamento.recorrencia.toLowerCase()}
+              /{recorrencia.toLowerCase()}
             </T>
           </View>
 
           <View style={st.vencRow}>
             <Ionicons name="calendar-outline" size={16} color={C.textTer} />
             <T c="textSec" size={13}>
-              Próxima cobrança em {aluno.proximoVencimento}
+              Próxima cobrança em {vencimento}
             </T>
           </View>
         </Card>
@@ -116,7 +173,7 @@ export default function PagamentoScreen() {
             />
           </View>
 
-          {metodo === "cartao" ? <CartaoView /> : <PixView />}
+          {metodo === "cartao" ? <CartaoView cartao={cartao} /> : <PixView />}
         </View>
       </ScrollView>
 
@@ -187,8 +244,22 @@ function SegBtn({
 }
 
 /** Cartão cadastrado + ação de troca (stub). */
-function CartaoView() {
-  const { bandeira, final, validade, nome } = pagamento.cartao;
+function CartaoView({ cartao }: { cartao?: CartaoParcial }) {
+  if (!cartao) {
+    return (
+      <View style={st.note}>
+        <Ionicons name="card-outline" size={16} color={C.textTer} />
+        <T c="textTer" size={12} style={{ flex: 1, lineHeight: 17 }}>
+          Não encontramos os dados do seu cartão. Se você pagou no cartão, eles
+          aparecem aqui após a confirmação da cobrança.
+        </T>
+      </View>
+    );
+  }
+  const bandeira = cartao.bandeira || "Cartão";
+  const final = cartao.final;
+  const validade = cartao.validade || "—";
+  const nome = cartao.titular || "—";
   return (
     <View style={{ gap: S.md }}>
       <View style={st.creditCard}>

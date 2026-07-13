@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Card, Screen, ScreenHeader, T } from "@/components/ui";
@@ -11,7 +12,13 @@ const refKcal = (r: Refeicao) =>
   r.alimentos.reduce((s, a) => s + a.macros.kcal, 0);
 
 export default function DietaScreen() {
-  const { refeicoes } = useDieta();
+  const { refeicoes, refetch } = useDieta();
+  // Relê ao focar → pega a dieta que o coach montou/atualizou depois do app abrir.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const [marcadas, setMarcadas] = useState<Record<string, boolean>>({});
   // Meta do dia = SOMA das refeições do plano que o consultor montou.
   const total = refeicoes.reduce((s, r) => s + refKcal(r), 0);

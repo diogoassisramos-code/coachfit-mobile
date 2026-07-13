@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { clearAlunoCache } from "@/lib/db";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 
 type AuthState = {
@@ -20,6 +21,10 @@ type AuthState = {
   signIn: (email?: string, password?: string) => Promise<void>;
   signUp: (email?: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Envia o e-mail de recuperação de senha. */
+  resetPassword: (email: string) => Promise<void>;
+  /** Troca a senha do usuário logado. */
+  updatePassword: (newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState>({
@@ -28,10 +33,12 @@ const AuthContext = createContext<AuthState>({
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  resetPassword: async () => {},
+  updatePassword: async () => {},
 });
 
 /** Rotas acessíveis sem sessão (grupo de auth). */
-const AUTH_ROUTES = ["login", "cadastro"];
+const AUTH_ROUTES = ["login", "cadastro", "recuperar-senha"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [signedIn, setSignedIn] = useState(false);
@@ -45,6 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      // Troca de conta/logout: descarta o aluno_id em cache pra não vazar dados
+      // do usuário anterior pro próximo.
+      clearAlunoCache();
       setSignedIn(!!session);
     });
     return () => sub.subscription.unsubscribe();
@@ -71,6 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut: async () => {
           await supabase!.auth.signOut();
         },
+        resetPassword: async (email) => {
+          const { error } = await supabase!.auth.resetPasswordForEmail(email);
+          if (error) throw error;
+        },
+        updatePassword: async (newPassword) => {
+          const { error } = await supabase!.auth.updateUser({
+            password: newPassword,
+          });
+          if (error) throw error;
+        },
       }
     : {
         // Protótipo (sem Supabase): estado em memória.
@@ -79,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn: async () => setSignedIn(true),
         signUp: async () => setSignedIn(true),
         signOut: async () => setSignedIn(false),
+        resetPassword: async () => {},
+        updatePassword: async () => {},
       };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Badge, Card, Screen, ScreenHeader, T } from "@/components/ui";
@@ -8,7 +9,13 @@ import { type Treino } from "@/data/aluno";
 import { useTreinos } from "@/lib/db";
 
 export default function TreinoScreen() {
-  const { treinos } = useTreinos();
+  const { treinos, refetch } = useTreinos();
+  // Relê ao focar a tela → pega treinos que o coach publicou depois do app abrir.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   return (
     <Screen>
       <ScreenHeader

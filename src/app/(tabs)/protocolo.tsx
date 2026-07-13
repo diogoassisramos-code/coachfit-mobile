@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Card, Screen, ScreenHeader, T } from "@/components/ui";
@@ -8,7 +9,13 @@ import { type ProtocoloItem } from "@/data/aluno";
 import { useProtocolo } from "@/lib/db";
 
 export default function ProtocoloScreen() {
-  const { protocolo } = useProtocolo();
+  const { protocolo, refetch } = useProtocolo();
+  // Relê ao focar → pega o protocolo que o coach publicou depois do app abrir.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
   const [tomados, setTomados] = useState<Record<string, boolean>>({});
   const total = protocolo.reduce((n, b) => n + b.itens.length, 0);
 

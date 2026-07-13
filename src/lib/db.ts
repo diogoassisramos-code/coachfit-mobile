@@ -77,25 +77,30 @@ export async function fetchTreinos(): Promise<Treino[]> {
  * Hook único de treinos do aluno: lê do Supabase quando configurado, senão
  * usa o mock. Todas as telas de treino consomem isto pra ficarem coerentes.
  */
-export function useTreinos(): { treinos: Treino[]; loading: boolean } {
+export function useTreinos(): {
+  treinos: Treino[];
+  loading: boolean;
+  refetch: () => void;
+} {
   const [treinos, setTreinos] = useState<Treino[]>(
     supabaseEnabled ? [] : mockTreinos
   );
   const [loading, setLoading] = useState(supabaseEnabled);
 
-  useEffect(() => {
+  // refetch pra reler ao focar a tela: quando o coach publica/edita treinos, o
+  // app pega a versão nova sem precisar de reload manual.
+  const refetch = useCallback(() => {
     if (!supabaseEnabled) return;
-    let active = true;
     fetchTreinos()
-      .then((t) => active && setTreinos(t))
+      .then((t) => setTreinos(t))
       .catch(() => {})
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+      .finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
-  return { treinos, loading };
+  return { treinos, loading, refetch };
 }
 
 // ── Dieta ──────────────────────────────────────────────────────────────────
@@ -156,23 +161,26 @@ export async function fetchRefeicoes(): Promise<Refeicao[]> {
   }));
 }
 
-export function useDieta(): { refeicoes: Refeicao[]; loading: boolean } {
+export function useDieta(): {
+  refeicoes: Refeicao[];
+  loading: boolean;
+  refetch: () => void;
+} {
   const [refeicoes, setRefeicoes] = useState<Refeicao[]>(
     supabaseEnabled ? [] : mockRefeicoes
   );
   const [loading, setLoading] = useState(supabaseEnabled);
-  useEffect(() => {
+  const refetch = useCallback(() => {
     if (!supabaseEnabled) return;
-    let active = true;
     fetchRefeicoes()
-      .then((r) => active && setRefeicoes(r))
+      .then((r) => setRefeicoes(r))
       .catch(() => {})
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+      .finally(() => setLoading(false));
   }, []);
-  return { refeicoes, loading };
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  return { refeicoes, loading, refetch };
 }
 
 // ── Protocolo ──────────────────────────────────────────────────────────────
@@ -229,23 +237,23 @@ export async function fetchProtocolo(): Promise<ProtocoloBloco[]> {
 export function useProtocolo(): {
   protocolo: ProtocoloBloco[];
   loading: boolean;
+  refetch: () => void;
 } {
   const [protocolo, setProtocolo] = useState<ProtocoloBloco[]>(
     supabaseEnabled ? [] : mockProtocolo
   );
   const [loading, setLoading] = useState(supabaseEnabled);
-  useEffect(() => {
+  const refetch = useCallback(() => {
     if (!supabaseEnabled) return;
-    let active = true;
     fetchProtocolo()
-      .then((p) => active && setProtocolo(p))
+      .then((p) => setProtocolo(p))
       .catch(() => {})
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+      .finally(() => setLoading(false));
   }, []);
-  return { protocolo, loading };
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  return { protocolo, loading, refetch };
 }
 
 // ── Check-in (envio do aluno) ───────────────────────────────────────────────
@@ -253,6 +261,15 @@ export function useProtocolo(): {
 // O aluno_id não muda na sessão — cacheia pra não repetir a query do profile a
 // cada leitura/envio (uma query a menos importa quando o banco está frio).
 let cachedAlunoId: string | null = null;
+
+/**
+ * Limpa o aluno_id em cache. DEVE ser chamado no logout/troca de conta: sem
+ * isso, o cache de módulo (que não é resetado num app nativo entre sessões)
+ * faz o próximo usuário puxar os dados do anterior.
+ */
+export function clearAlunoCache(): void {
+  cachedAlunoId = null;
+}
 
 /** aluno_id do usuário logado (lido do profile, com cache). null se não for aluno. */
 export async function getMyAlunoId(): Promise<string | null> {
@@ -448,9 +465,11 @@ export function useMyCheckinsFull(): {
       setLoading(false);
       return;
     }
+    // Modo real: mostra só os check-ins DO aluno logado. Sem check-ins → lista
+    // vazia (nunca cai no mock da Ana, que vazava pra quem ainda não tem envio).
     fetchMyCheckinsFull()
-      .then((c) => setCheckins(c.length ? c : mockCheckins))
-      .catch(() => setCheckins(mockCheckins))
+      .then((c) => setCheckins(c))
+      .catch(() => setCheckins([]))
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => {
@@ -484,6 +503,152 @@ export function useMyCheckins(): {
     refetch();
   }, [refetch]);
   return { checkins, loading, refetch };
+}
+
+// ── Perfil + anamnese do aluno logado (dados REAIS, não o mock) ──────────────
+export type PerguntaAnamnese = {
+  id: string;
+  ordem?: number;
+  texto: string;
+  tipo: "texto" | "numero" | "escolha" | "foto";
+  obrigatoria: boolean;
+  opcoes?: string[];
+};
+
+export type MeuPerfil = {
+  nome: string;
+  objetivo?: string;
+  pesoAtual?: number;
+  pesoInicial?: number;
+  statusPagamento?: string;
+  proximoVencimento?: string;
+  consultoria?: string;
+  consultor?: string;
+  plano?: string;
+  planoValor?: number;
+  planoRecorrencia?: string;
+  /** Dados parciais do cartão cadastrado na compra (só quando pagou no cartão). */
+  cartao?: { final: string; bandeira?: string; titular?: string; validade?: string };
+  /** "cartao" quando há cartão salvo; "pix" caso contrário. undefined se desconhecido. */
+  metodo?: "cartao" | "pix";
+  anamneseAtiva: boolean | null;
+  anamneseRespondida: boolean;
+  anamnesePerguntas: PerguntaAnamnese[];
+  /** consultoria tem anamnese ativa e o aluno ainda não respondeu. */
+  anamnesePendente: boolean;
+};
+
+/**
+ * Contexto completo do aluno logado em 1 chamada (RPC meu_perfil, SECURITY
+ * DEFINER — a RLS não deixaria o aluno ler consultoria/consultor/plano direto).
+ */
+export async function fetchMe(): Promise<MeuPerfil | null> {
+  if (!supabase) return null;
+  await supabase.auth.getSession();
+  const { data, error } = await supabase.rpc("meu_perfil");
+  if (!error && data) {
+    const d = data as any;
+    const ativa =
+      d.anamnese_ativa === null || d.anamnese_ativa === undefined
+        ? null
+        : !!d.anamnese_ativa;
+    const respondida = !!d.anamnese_respondida;
+    return {
+      nome: d.nome ?? "",
+      objetivo: d.objetivo ?? undefined,
+      pesoAtual: d.peso_atual != null ? Number(d.peso_atual) : undefined,
+      pesoInicial: d.peso_inicial != null ? Number(d.peso_inicial) : undefined,
+      statusPagamento: d.status_pagamento ?? undefined,
+      proximoVencimento: d.proximo_vencimento ?? undefined,
+      consultoria: d.consultoria ?? undefined,
+      consultor: d.consultor ?? undefined,
+      plano: d.plano ?? undefined,
+      planoValor: d.plano_valor != null ? Number(d.plano_valor) : undefined,
+      planoRecorrencia: d.plano_recorrencia ?? undefined,
+      cartao: d.cartao_final
+        ? {
+            final: String(d.cartao_final),
+            bandeira: d.cartao_bandeira ?? undefined,
+            titular: d.cartao_titular ?? undefined,
+            validade: d.cartao_validade ?? undefined,
+          }
+        : undefined,
+      metodo: d.cartao_final ? "cartao" : "pix",
+      anamneseAtiva: ativa,
+      anamneseRespondida: respondida,
+      anamnesePerguntas: Array.isArray(d.anamnese_perguntas)
+        ? d.anamnese_perguntas
+        : [],
+      anamnesePendente: ativa === true && !respondida,
+    };
+  }
+
+  // Fallback: se a RPC ainda não existe (migration schema_anamnese_rpc.sql não
+  // rodou), lê ao menos a própria linha de alunos (RLS deixa) pra o nome/peso
+  // não regredirem pro mock. Sem consultoria/consultor/anamnese até rodar a RPC.
+  const alunoId = await getMyAlunoId();
+  if (!alunoId) return null;
+  const { data: a } = await supabase
+    .from("alunos")
+    .select(
+      "nome, objetivo, peso_atual, peso_inicial, status_pagamento, proximo_vencimento, anamnese_respondida"
+    )
+    .eq("id", alunoId)
+    .maybeSingle();
+  if (!a) return null;
+  const al = a as any;
+  return {
+    nome: al.nome ?? "",
+    objetivo: al.objetivo ?? undefined,
+    pesoAtual: al.peso_atual != null ? Number(al.peso_atual) : undefined,
+    pesoInicial: al.peso_inicial != null ? Number(al.peso_inicial) : undefined,
+    statusPagamento: al.status_pagamento ?? undefined,
+    proximoVencimento: al.proximo_vencimento ?? undefined,
+    consultoria: undefined,
+    consultor: undefined,
+    plano: undefined,
+    anamneseAtiva: null,
+    anamneseRespondida: !!al.anamnese_respondida,
+    anamnesePerguntas: [],
+    anamnesePendente: false,
+  };
+}
+
+/**
+ * Perfil do aluno logado (Supabase). null enquanto carrega / em modo mock.
+ * `refetch` pra reler ao focar a tela (ex.: depois de responder a anamnese, pra
+ * a home trocar o card de anamnese pelo de check-in).
+ */
+export function useMe(): {
+  me: MeuPerfil | null;
+  loading: boolean;
+  refetch: () => void;
+} {
+  const [me, setMe] = useState<MeuPerfil | null>(null);
+  const [loading, setLoading] = useState(supabaseEnabled);
+  const refetch = useCallback(() => {
+    if (!supabaseEnabled) return;
+    fetchMe()
+      .then((m) => setMe(m))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  return { me, loading, refetch };
+}
+
+/** Envia as respostas da anamnese do aluno logado (RPC valida no servidor). */
+export async function responderAnamnese(
+  respostas: Record<string, string>
+): Promise<void> {
+  if (!supabase) throw new Error("sem supabase");
+  await supabase.auth.getSession();
+  const { error } = await supabase.rpc("responder_anamnese", {
+    p_respostas: respostas,
+  });
+  if (error) throw error;
 }
 
 // ── Solicitação de check-in (o consultor pediu) ─────────────────────────────
@@ -524,4 +689,132 @@ export function useCheckinSolicitado(): {
     refetch();
   }, [refetch]);
   return { ...state, refetch };
+}
+
+// ── Notificações ────────────────────────────────────────────────────────────
+// Feed derivado de sinais reais (sem tabela dedicada): resposta do coach a
+// check-ins, atualização de protocolo e pedido de check-in do consultor.
+export type Notificacao = {
+  id: string;
+  tipo: "checkin" | "protocolo" | "pedido";
+  titulo: string;
+  descricao?: string;
+  data: string; // "DD mmm"
+  iso: string; // usado só pra ordenar
+  href?: string; // rota ao tocar
+};
+
+const NOTIFS_MOCK: Notificacao[] = [
+  {
+    id: "m1",
+    tipo: "checkin",
+    titulo: "Seu coach respondeu seu check-in",
+    descricao: "Semana 5: “Ótima semana! Atenção ao sono. Mantém a dieta.”",
+    data: "13 jun",
+    iso: "2026-06-13",
+    href: "/perfil",
+  },
+  {
+    id: "m2",
+    tipo: "protocolo",
+    titulo: "Você recebeu uma atualização de protocolo",
+    descricao: "Confira os suplementos e extras atualizados.",
+    data: "10 jun",
+    iso: "2026-06-10",
+    href: "/protocolo",
+  },
+];
+
+export async function fetchNotificacoes(): Promise<Notificacao[]> {
+  if (!supabase) return [];
+  const alunoId = await getMyAlunoId();
+  if (!alunoId) return [];
+  const notifs: Notificacao[] = [];
+
+  // Coach respondeu check-ins
+  const { data: cks } = await supabase
+    .from("checkins")
+    .select("id,semana,status,resposta_coach,updated_at,enviado_em")
+    .eq("aluno_id", alunoId)
+    .eq("status", "respondido");
+  (cks ?? []).forEach((c: any) => {
+    if (!c.resposta_coach) return;
+    notifs.push({
+      id: "ck-" + c.id,
+      tipo: "checkin",
+      titulo: "Seu coach respondeu seu check-in",
+      descricao: `Semana ${c.semana}: “${c.resposta_coach}”`,
+      data: dataCurtaMobile(c.updated_at ?? c.enviado_em),
+      iso: c.updated_at ?? c.enviado_em ?? "",
+      href: `/checkins/${c.id}`,
+    });
+  });
+
+  // Consultor pediu um check-in
+  const { data: al } = await supabase
+    .from("alunos")
+    .select("checkin_solicitado,checkin_solicitado_em")
+    .eq("id", alunoId)
+    .maybeSingle();
+  if (al?.checkin_solicitado) {
+    notifs.push({
+      id: "pedido",
+      tipo: "pedido",
+      titulo: "Seu coach pediu um novo check-in",
+      descricao: "Toque para registrar o check-in da semana.",
+      data: dataCurtaMobile(al.checkin_solicitado_em ?? ""),
+      iso: al.checkin_solicitado_em ?? "",
+      href: "/checkin",
+    });
+  }
+
+  // Atualização de protocolo
+  const { data: proto } = await supabase
+    .from("protocolos")
+    .select("updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (proto) {
+    notifs.push({
+      id: "proto",
+      tipo: "protocolo",
+      titulo: "Você recebeu uma atualização de protocolo",
+      descricao: "Confira os suplementos e extras atualizados.",
+      data: dataCurtaMobile(proto.updated_at ?? ""),
+      iso: proto.updated_at ?? "",
+      href: "/protocolo",
+    });
+  }
+
+  return notifs.sort((a, b) => (a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0));
+}
+
+/** Feed de notificações do aluno. Dados reais quando há; senão, mock. */
+export function useNotificacoes(): {
+  notificacoes: Notificacao[];
+  loading: boolean;
+  refetch: () => void;
+} {
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>(
+    supabaseEnabled ? [] : NOTIFS_MOCK
+  );
+  const [loading, setLoading] = useState(supabaseEnabled);
+  const refetch = useCallback(() => {
+    if (!supabaseEnabled) {
+      setNotificacoes(NOTIFS_MOCK);
+      setLoading(false);
+      return;
+    }
+    // Modo real: notificações derivam de sinais reais do aluno. Sem sinais →
+    // vazio (não mostra as notificações mock da Ana).
+    fetchNotificacoes()
+      .then((n) => setNotificacoes(n))
+      .catch(() => setNotificacoes([]))
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  return { notificacoes, loading, refetch };
 }

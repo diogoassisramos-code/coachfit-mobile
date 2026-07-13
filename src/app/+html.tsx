@@ -15,8 +15,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, shrink-to-fit=no"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
+        {/* Tinge o chrome do navegador (faixa do status bar no iOS, barra no
+            Android) com a cor do app — sem isso o topo fica branco. */}
+        <meta name="theme-color" content="#f4f8f7" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -56,5 +60,7 @@ const globalCss = `
 html, body, #root {
   font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
-body { background-color: #f4f8f7; }
+/* Fundo do app em TODOS os níveis: o overscroll (rubber-band) no topo/rodapé
+   revela html/#root — se ficarem brancos, o topo e a base destoam do app. */
+html, body, #root { background-color: #f4f8f7; }
 `;

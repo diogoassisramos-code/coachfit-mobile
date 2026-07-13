@@ -17,6 +17,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { C } from "@/constants/coachfit";
@@ -43,6 +44,10 @@ function RootNav() {
         name="checkin"
         options={{ presentation: "modal", headerShown: false }}
       />
+      <Stack.Screen
+        name="anamnese"
+        options={{ presentation: "modal", headerShown: false }}
+      />
     </Stack>
   );
 }
@@ -66,6 +71,27 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  // WEB: no export SPA (output "single") o +html.tsx não é aplicado, então o
+  // topo (faixa do status bar via theme-color) e o overscroll (html/body/#root)
+  // ficariam brancos. Pinta tudo com C.bg em runtime para casar com o app.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const doc = (globalThis as { document?: Document }).document;
+    if (!doc) return;
+    const bg = C.bg;
+    doc.documentElement.style.backgroundColor = bg;
+    if (doc.body) doc.body.style.backgroundColor = bg;
+    const root = doc.getElementById("root");
+    if (root) root.style.backgroundColor = bg;
+    let meta = doc.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = doc.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      doc.head.appendChild(meta);
+    }
+    meta.setAttribute("content", bg);
+  }, []);
 
   if (!fontsLoaded) {
     return null;

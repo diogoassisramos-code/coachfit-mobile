@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar, Card, Screen, ScreenHeader, T } from "@/components/ui";
 import { C, dataFont, interFont, R, S, titleFont } from "@/constants/coachfit";
@@ -9,16 +9,27 @@ import { aluno } from "@/data/aluno";
 import {
   useCheckinSolicitado,
   useDieta,
+  useMe,
   useMyCheckins,
   useProtocolo,
   useTreinos,
 } from "@/lib/db";
+import { supabaseEnabled } from "@/lib/supabase";
 
 export default function HojeScreen() {
   const router = useRouter();
-  const { treinos } = useTreinos();
-  const { refeicoes } = useDieta();
-  const { protocolo } = useProtocolo();
+  const { me, loading: carregandoMe, refetch: refetchMe } = useMe();
+  // proto = sem Supabase (demo): pode usar o mock da Ana. Em modo real, nunca —
+  // cada aluno vê só o que é dele (senão mostra estado vazio "—").
+  const proto = !supabaseEnabled;
+  const nomeExibicao = me?.nome ?? aluno.nome;
+  const consultoriaNome = me?.consultoria ?? (proto ? aluno.consultoria : "Revo");
+  const consultorNome =
+    me?.consultor ?? (proto ? aluno.consultor : "seu treinador");
+  const anamnesePendente = !!me?.anamnesePendente;
+  const { treinos, refetch: refetchTreinos } = useTreinos();
+  const { refeicoes, refetch: refetchDieta } = useDieta();
+  const { protocolo, refetch: refetchProto } = useProtocolo();
   const { checkins, refetch: refetchCheckins } = useMyCheckins();
   const {
     solicitado,
@@ -30,7 +41,18 @@ export default function HojeScreen() {
     useCallback(() => {
       refetchCheckins();
       refetchSolic();
-    }, [refetchCheckins, refetchSolic])
+      refetchMe();
+      refetchTreinos();
+      refetchDieta();
+      refetchProto();
+    }, [
+      refetchCheckins,
+      refetchSolic,
+      refetchMe,
+      refetchTreinos,
+      refetchDieta,
+      refetchProto,
+    ])
   );
 
   const treinoHoje = treinos[0];
@@ -45,24 +67,66 @@ export default function HojeScreen() {
   const semanaAtual = ultimo ? ultimo.semana + 1 : 1;
   const aguardando = ultimo?.status === "pendente" ? ultimo : undefined;
 
-  // Peso atual e aderência derivam do último check-in (senão, mock inicial).
-  const pesoAtual = ultimo?.peso || aluno.pesoAtual;
+  // Peso e aderência: do último check-in; senão do cadastro do aluno; senão "—".
+  const pesoBase = me?.pesoAtual ?? (proto ? aluno.pesoAtual : undefined);
+  const pesoInicialBase =
+    me?.pesoInicial ?? (proto ? aluno.pesoInicial : undefined);
+  const pesoAtual = ultimo?.peso ?? pesoBase; // number | undefined
+  const deltaPeso =
+    pesoAtual != null && pesoInicialBase != null
+      ? pesoAtual - pesoInicialBase
+      : null;
   const aderencia =
     ultimo && ultimo.treinosTotais > 0
       ? Math.round((ultimo.treinosFeitos / ultimo.treinosTotais) * 100)
-      : aluno.aderencia;
-  const deltaPeso = pesoAtual - aluno.pesoInicial;
+      : proto
+        ? aluno.aderencia
+        : null; // number | null
+
+  // Loading inicial (modo real): enquanto não sabemos QUEM é o aluno, mostra um
+  // spinner em vez de vazar o mock (evita o flash "Olá, Ana" antes de resolver).
+  if (supabaseEnabled && carregandoMe && !me) {
+    return (
+      <Screen>
+        <View style={s.loading}>
+          <ActivityIndicator size="large" color={C.accentDeep} />
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
       <ScreenHeader
-        eyebrow={aluno.consultoria}
-        title="Olá, Ana"
+        eyebrow={consultoriaNome}
+        title={`Olá, ${nomeExibicao.split(" ")[0]}`}
         subtitle="Vamos pro treino de hoje?"
-        right={<Avatar name={aluno.nome} size={48} />}
+        right={<Avatar name={nomeExibicao} size={48} />}
       />
 
-      {/* Check-in da semana — módulo petrol com losango mint */}
+      {/* Anamnese no 1º acesso — aparece no lugar do check-in até responder */}
+      {anamnesePendente ? (
+        <View style={hero.card}>
+          <View style={hero.diamond} />
+          <View style={hero.eyebrowPill}>
+            <Ionicons name="clipboard-outline" size={13} color={C.accent} />
+            <Text style={hero.eyebrowText}>Antes de começar</Text>
+          </View>
+          <Text style={hero.title}>Responda sua anamnese</Text>
+          <Text style={hero.body}>
+            {consultorNome} precisa te conhecer pra montar seu plano. Leva 2
+            minutos — depois disso você libera o check-in.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [hero.cta, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push("/anamnese")}
+          >
+            <Ionicons name="clipboard-outline" size={18} color={C.brand} />
+            <Text style={hero.ctaText}>Responder anamnese</Text>
+          </Pressable>
+        </View>
+      ) : (
+      /* Check-in da semana — módulo petrol com losango mint */
       <View style={hero.card}>
         <View style={hero.diamond} />
         <View style={hero.eyebrowPill}>
@@ -89,7 +153,7 @@ export default function HojeScreen() {
           <>
             <Text style={hero.title}>Check-in enviado!</Text>
             <Text style={hero.body}>
-              Recebemos seu check-in. {aluno.consultor} vai analisar e responder
+              Recebemos seu check-in. {consultorNome} vai analisar e responder
               em breve.
             </Text>
           </>
@@ -97,13 +161,13 @@ export default function HojeScreen() {
           <>
             <Text style={hero.title}>
               {solicitado
-                ? `${aluno.consultor} pediu seu check-in!`
+                ? `${consultorNome} pediu seu check-in!`
                 : "Hora do seu check-in semanal"}
             </Text>
             <Text style={hero.body}>
               {solicitado && solicitacaoMsg
                 ? solicitacaoMsg
-                : `Registre peso, fotos e como foi a semana pro ${aluno.consultor} ajustar seu plano.`}
+                : `Registre peso, fotos e como foi a semana pro ${consultorNome} ajustar seu plano.`}
             </Text>
             <Pressable
               style={({ pressed }) => [hero.cta, pressed && { opacity: 0.85 }]}
@@ -115,6 +179,7 @@ export default function HojeScreen() {
           </>
         )}
       </View>
+      )}
 
       {/* Resposta do consultor — aparece quando o último check-in foi respondido */}
       {ultimo?.status === "respondido" && ultimo.respostaCoach ? (
@@ -145,17 +210,27 @@ export default function HojeScreen() {
           <T c="textTer" size={11} weight="700" style={s.metricLabel}>
             PESO ATUAL
           </T>
-          <Text style={s.metricValue}>{pesoAtual} kg</Text>
-          <Text style={[s.metricDelta, { color: C.accentDeep }]}>
-            {deltaPeso >= 0 ? "+" : ""}
-            {deltaPeso.toFixed(1)} kg
+          <Text style={s.metricValue}>
+            {pesoAtual != null ? `${pesoAtual} kg` : "—"}
           </Text>
+          {deltaPeso != null ? (
+            <Text style={[s.metricDelta, { color: C.accentDeep }]}>
+              {deltaPeso >= 0 ? "+" : ""}
+              {deltaPeso.toFixed(1)} kg
+            </Text>
+          ) : (
+            <Text style={[s.metricDelta, { color: C.textTer }]}>
+              sem histórico
+            </Text>
+          )}
         </Card>
         <Card style={s.metric}>
           <T c="textTer" size={11} weight="700" style={s.metricLabel}>
             ADERÊNCIA
           </T>
-          <Text style={s.metricValue}>{aderencia}%</Text>
+          <Text style={s.metricValue}>
+            {aderencia != null ? `${aderencia}%` : "—"}
+          </Text>
           <T c="textSec" size={12}>
             no treino
           </T>
@@ -312,6 +387,7 @@ const hero = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
+  loading: { alignItems: "center", justifyContent: "center", paddingVertical: 140 },
   metrics: { flexDirection: "row", gap: S.md },
   metric: { flex: 1, gap: 2 },
   metricLabel: { letterSpacing: 0.8, marginBottom: 2 },

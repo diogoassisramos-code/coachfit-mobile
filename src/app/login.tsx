@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { T } from "@/components/ui";
 import { AuthField, AuthHero, authStyles as a } from "@/components/auth";
-import { C } from "@/constants/coachfit";
+import { C, S } from "@/constants/coachfit";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginScreen() {
@@ -85,13 +85,21 @@ export default function LoginScreen() {
                   />
                 </Pressable>
               </View>
-              <Pressable style={a.forgot} hitSlop={6}>
+              <Pressable
+                style={a.forgot}
+                hitSlop={6}
+                onPress={() => router.push("/recuperar-senha")}
+              >
                 <T c="accentDeep" size={13} weight="600">
                   Esqueci minha senha
                 </T>
               </Pressable>
             </View>
 
+          </View>
+
+          {/* Empurrado pro quadrante inferior da tela pelo marginTop:auto */}
+          <View style={{ marginTop: "auto", paddingTop: S.xxl, gap: S.md }}>
             {erro ? (
               <T c="danger" size={13} weight="600">
                 {erro}
